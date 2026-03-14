@@ -68,11 +68,11 @@ pip install -r requirements.txt
 ### 2. Redis Setup
 
 ```bash
-# Using Docker (recommended)
-docker run -d --name redis-stack -p 6379:6379 redis/redis-stack-server:latest
-
-# Or install Redis Stack locally
+# Install Redis Stack locally
 # See: https://redis.io/docs/latest/operate/oss_and_stack/install/install-stack/
+
+# Start Redis server
+redis-server
 ```
 
 ### 3. Configuration
@@ -310,39 +310,23 @@ redis-cli FT.INFO synapse_idx
 
 ## 🚀 Deployment
 
-### Docker Deployment
+### Production Requirements
+- **Memory**: 2GB minimum, 4GB recommended
+- **CPU**: 4 cores minimum, 8 cores recommended
+- **Redis**: Redis Stack with persistence
+- **Monitoring**: Health checks and metrics
 
-```dockerfile
-FROM python:3.11-slim
+### Environment Setup
+```bash
+# Production environment setup
+export REDIS_HOST=localhost
+export REDIS_PORT=6379
+export HOST=0.0.0.0
+export PORT=8000
+export DEBUG=false
 
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install -r requirements.txt
-
-COPY . .
-EXPOSE 8000
-
-CMD ["uvicorn", "synapse.server:app", "--host", "0.0.0.0", "--port", "8000"]
-```
-
-### Docker Compose
-
-```yaml
-version: '3.8'
-services:
-  synapse:
-    build: .
-    ports:
-      - "8000:8000"
-    environment:
-      - REDIS_HOST=redis
-    depends_on:
-      - redis
-      
-  redis:
-    image: redis/redis-stack-server:latest
-    ports:
-      - "6379:6379"
+# Start the server
+python -m synapse.server
 ```
 
 ## 🤝 Contributing
