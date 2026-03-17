@@ -118,7 +118,7 @@ jobs:
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > /tmp/ssh_key
           chmod 600 /tmp/ssh_key
           
-          # Test SSH connection
+          # Try using existing SSH profile
           if ssh -i /tmp/ssh_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "echo 'SSH connection successful'"; then
             echo "✅ SSH connection established, starting deployment..."
             ssh -i /tmp/ssh_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "
@@ -134,10 +134,12 @@ jobs:
               echo 'Deployment completed successfully!'
             "
           else
-            echo "❌ SSH connection blocked by Tailscale policy"
-            echo "🔧 FIX NEEDED: Update Tailscale ACL policy to allow SSH"
-            echo "Add this to your Tailscale ACL policy:"
-            echo '"ssh", ["autogroup:member", "autogroup:member", 22]'
+            echo "❌ SSH connection still blocked by Tailscale policy"
+            echo "🔧 Try this alternative approach:"
+            echo "1. Check exact ACL syntax in Tailscale admin console"
+            echo "2. Ensure GitHub Actions user is in correct group"
+            echo "3. Verify tag owner field includes GitHub Actions"
+            echo "4. Test with: tailscale ssh ${{ secrets.SSH_HOST }} 'echo test'"
             exit 1
           fi
           
