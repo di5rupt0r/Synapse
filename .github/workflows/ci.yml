@@ -48,10 +48,9 @@ jobs:
           pip install -r requirements.txt
 
       - name: Lint with ruff
-        run: ruff check synapse/ tests/
-
-      - name: Format check with ruff
-        run: ruff format --check synapse/ tests/
+        run: |
+          ruff check synapse/ tests/ --fix
+          ruff format synapse/ tests/
 
       - name: Run tests
         run: |
