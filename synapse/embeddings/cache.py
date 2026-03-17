@@ -1,8 +1,7 @@
 """LRU Cache for embedding backend."""
 
-import uuid
 from collections import OrderedDict
-from typing import Any, Dict, List
+from typing import Dict, List
 
 from .backend import EmbeddingBackend
 

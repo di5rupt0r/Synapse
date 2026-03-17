@@ -81,7 +81,7 @@ def chunk_by_treesitter(content: str, extension: str) -> List[Dict[str, Any]]:
     try:
         parser = get_parser(language)
         tree = parser.parse(bytes(content, "utf8"))
-    except Exception as e:
+    except Exception:
         # Fallback to simple line-based chunking if parsing fails
         return fallback_chunk_by_lines(content)
 

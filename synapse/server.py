@@ -8,7 +8,6 @@ from typing import Any, Dict
 import redis
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.testclient import TestClient
 
 from .config import get_settings

@@ -1,7 +1,7 @@
 """MCP Recall Handler - Hybrid Search + Graph Resolution."""
 
 from textwrap import shorten
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict
 
 import yaml
 
@@ -33,12 +33,10 @@ class MCPRecall(MCPBase):
             depth = params.get("depth", 1)
             limit = params.get("limit", 10)
 
-            # Generate embedding for query
-            query_embedding = self.embeddings.embed(query)
-
             # Hybrid search
             search_results = self.redis.search_hybrid(
                 query=query,
+                embedding=self.embeddings.embed(query),
                 domain_filter=domain_filter,
                 type_filter=type_filter,
                 limit=limit,

@@ -54,7 +54,9 @@ class MCPBase:
 
             if request.method not in self.methods:
                 return self.format_error(
-                    request.id, -32601, "Method not found"  # Method not found
+                    request.id,
+                    -32601,
+                    "Method not found",  # Method not found
                 )
 
             result = self.methods[request.method](request.params or {})
@@ -62,5 +64,7 @@ class MCPBase:
 
         except Exception as e:
             return self.format_error(
-                raw_request.get("id", ""), -32603, str(e)  # Internal error
+                raw_request.get("id", ""),
+                -32603,
+                str(e),  # Internal error
             )

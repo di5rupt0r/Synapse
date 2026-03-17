@@ -2,7 +2,7 @@
 
 import re
 from textwrap import shorten
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 import yaml
 

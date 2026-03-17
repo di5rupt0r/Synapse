@@ -176,7 +176,6 @@ class SynapseRedis:
     # ---- Helpers ----
     def _float_to_bytes(self, vec: List[float]) -> bytes:
         """Convert float list to bytes for RediSearch KNN."""
-        import struct
 
         return struct.pack(f"{len(vec)}f", *vec)
 

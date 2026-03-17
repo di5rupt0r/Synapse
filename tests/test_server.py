@@ -1,8 +1,6 @@
 """TDD RED Phase: Tests for FastAPI Server."""
 
-import pytest
 from unittest.mock import Mock, patch
-import json
 from fastapi.testclient import TestClient
 
 
@@ -10,25 +8,26 @@ def test_server_health_endpoint():
     """Test health check endpoint."""
     # This will fail - server doesn't exist yet (RED phase)
     from synapse.server import app
-    
+
     client = TestClient(app)
-    
+
     # Mock the global variables in the server module
-    with patch('synapse.server.synapse_redis') as mock_synapse_redis, \
-         patch('synapse.server.embedding_cache') as mock_cache, \
-         patch('synapse.server.get_settings') as mock_get_settings:
-        
+    with (
+        patch("synapse.server.synapse_redis") as mock_synapse_redis,
+        patch("synapse.server.embedding_cache") as mock_cache,
+        patch("synapse.server.get_settings") as mock_get_settings,
+    ):
         # Setup mocks
         mock_synapse_redis.ping.return_value = True
         mock_cache.embed.return_value = [0.1] * 768
         mock_cache.get_stats.return_value = {"hits": 10, "misses": 2}
-        
+
         mock_settings = Mock()
         mock_settings.embedding_model = "microsoft/unixcoder-base"
         mock_get_settings.return_value = mock_settings
-        
+
         response = client.get("/health")
-        
+
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "healthy"
@@ -41,29 +40,25 @@ def test_server_health_endpoint():
 def test_server_memorize_endpoint():
     """Test memorize MCP endpoint."""
     from synapse.server import app
-    
+
     client = TestClient(app)
-    
+
     # Mock MCP handler
-    with patch('synapse.server.mcp_memorize') as mock_mcp:
+    with patch("synapse.server.mcp_memorize") as mock_mcp:
         mock_mcp.handle_memorize.return_value = {
             "status": "success",
-            "id": "node:test:123"
+            "id": "node:test:123",
         }
-        
+
         request_data = {
             "jsonrpc": "2.0",
             "id": "test-123",
             "method": "memorize",
-            "params": {
-                "domain": "test",
-                "type": "entity",
-                "content": "test content"
-            }
+            "params": {"domain": "test", "type": "entity", "content": "test content"},
         }
-        
+
         response = client.post("/mcp/memorize", json=request_data)
-        
+
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "success"
@@ -73,32 +68,26 @@ def test_server_memorize_endpoint():
 def test_server_recall_endpoint():
     """Test recall MCP endpoint."""
     from synapse.server import app
-    
+
     client = TestClient(app)
-    
+
     # Mock MCP handler
-    with patch('synapse.server.mcp_recall') as mock_mcp:
+    with patch("synapse.server.mcp_recall") as mock_mcp:
         mock_mcp.handle_request.return_value = {
             "jsonrpc": "2.0",
             "id": "test-456",
-            "result": {
-                "format": "compressed_yaml",
-                "content": "matched_nodes: []"
-            }
+            "result": {"format": "compressed_yaml", "content": "matched_nodes: []"},
         }
-        
+
         request_data = {
             "jsonrpc": "2.0",
             "id": "test-456",
             "method": "recall_context",
-            "params": {
-                "query": "test query",
-                "limit": 5
-            }
+            "params": {"query": "test query", "limit": 5},
         }
-        
+
         response = client.post("/mcp/recall", json=request_data)
-        
+
         assert response.status_code == 200
         data = response.json()
         assert data["result"]["format"] == "compressed_yaml"
@@ -109,32 +98,29 @@ def test_server_recall_endpoint():
 def test_server_patch_endpoint():
     """Test patch MCP endpoint."""
     from synapse.server import app
-    
+
     client = TestClient(app)
-    
+
     # Mock MCP handler
-    with patch('synapse.server.mcp_patch') as mock_mcp:
+    with patch("synapse.server.mcp_patch") as mock_mcp:
         mock_mcp.handle_request.return_value = {
             "jsonrpc": "2.0",
             "id": "test-789",
-            "result": {
-                "node_id": "node:test:123",
-                "updated": True
-            }
+            "result": {"node_id": "node:test:123", "updated": True},
         }
-        
+
         request_data = {
             "jsonrpc": "2.0",
             "id": "test-789",
             "method": "patch_state",
             "params": {
                 "node_id": "node:test:123",
-                "updates": {"content": "updated content"}
-            }
+                "updates": {"content": "updated content"},
+            },
         }
-        
+
         response = client.post("/mcp/patch", json=request_data)
-        
+
         assert response.status_code == 200
         data = response.json()
         assert data["result"]["node_id"] == "node:test:123"
@@ -145,37 +131,38 @@ def test_server_patch_endpoint():
 def test_server_metrics_endpoint():
     """Test metrics endpoint."""
     from synapse.server import app
-    
+
     client = TestClient(app)
-    
+
     # Mock Redis client
-    with patch('synapse.server.redis_client') as mock_redis, \
-         patch('synapse.server.embedding_cache') as mock_cache:
-        
+    with (
+        patch("synapse.server.redis_client") as mock_redis,
+        patch("synapse.server.embedding_cache") as mock_cache,
+    ):
         # Setup mocks
         mock_redis.info.return_value = {
             "connected_clients": 5,
             "used_memory_human": "1.5M",
-            "total_commands_processed": 1000
+            "total_commands_processed": 1000,
         }
-        
+
         mock_ft = Mock()
         mock_ft.info.return_value = {
             "num_docs": 100,
             "max_doc_id": 150,
             "num_terms": 1000,
-            "num_records": 200
+            "num_records": 200,
         }
         mock_redis.ft.return_value = mock_ft
-        
+
         mock_cache.get_stats.return_value = {
             "hits": 800,
             "misses": 200,
-            "hit_rate": 0.8
+            "hit_rate": 0.8,
         }
-        
+
         response = client.get("/metrics")
-        
+
         assert response.status_code == 200
         data = response.json()
         assert "timestamp" in data
@@ -189,22 +176,22 @@ def test_server_metrics_endpoint():
 def test_server_error_handling():
     """Test server error handling."""
     from synapse.server import app
-    
+
     client = TestClient(app)
-    
+
     # Mock MCP handler to raise exception
-    with patch('synapse.server.mcp_memorize') as mock_mcp:
+    with patch("synapse.server.mcp_memorize") as mock_mcp:
         mock_mcp.handle_memorize.side_effect = Exception("Test error")
-        
+
         request_data = {
             "jsonrpc": "2.0",
             "id": "test-error",
             "method": "memorize",
-            "params": {}
+            "params": {},
         }
-        
+
         response = client.post("/mcp/memorize", json=request_data)
-        
+
         assert response.status_code == 500
         data = response.json()
         assert data["status"] == "error"
@@ -215,32 +202,32 @@ def test_server_startup_events():
     """Test server startup events."""
     # This will test that startup events are properly configured
     from synapse.server import app
-    
+
     # Check that lifespan is configured (FastAPI uses lifespan, not separate startup/shutdown events)
     assert app.router.lifespan_context is not None
     # Just verify the app has the lifespan configured
-    assert hasattr(app, 'state') or app.router.lifespan_context is not None
+    assert hasattr(app, "state") or app.router.lifespan_context is not None
 
 
 def test_server_request_validation():
     """Test request validation."""
     from synapse.server import app
-    
+
     client = TestClient(app)
-    
+
     # Test invalid JSON
     response = client.post("/mcp/memorize", data="invalid json")
-    
+
     assert response.status_code == 500  # JSON parsing error
 
 
 def test_server_cors_headers():
     """Test CORS headers are present."""
     from synapse.server import app
-    
+
     client = TestClient(app)
-    
+
     response = client.options("/mcp/memorize")
-    
+
     # Should handle OPTIONS requests
     assert response.status_code in [200, 405]
