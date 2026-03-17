@@ -106,7 +106,6 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     environment: production
-    continue-on-error: true
     steps:
       - name: Authenticate with Tailscale
         uses: tailscale/github-action@v2
@@ -116,7 +115,6 @@ jobs:
 
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1
-        continue-on-error: true
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
@@ -139,9 +137,8 @@ jobs:
           if [ "${{ job.status }}" == "success" ]; then
             echo "✅ Deployment completed successfully"
           else
-            echo "⚠️ Deployment skipped due to SSH connectivity issues"
-            echo "Manual deployment available via:"
-            echo "ssh -i ~/.ssh/synapse_deploy copilot@100.75.49.88"
+            echo "❌ Deployment failed"
+            exit 1
           fi
 
       - name: Notify failure
