@@ -37,7 +37,7 @@ def hello_world():
 class MyClass:
     def method1(self):
         return "method1"
-    
+
     def method2(self):
         return "method2"
 """
@@ -77,7 +77,7 @@ class Person {
     constructor(name) {
         this.name = name;
     }
-    
+
     sayHello() {
         return greet(this.name);
     }

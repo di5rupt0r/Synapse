@@ -1,7 +1,8 @@
 """TDD RED Phase: Tests for CI/CD configuration following ADR-005."""
 
-import yaml
 from pathlib import Path
+
+import yaml
 
 
 def test_ci_uses_latest_actions():

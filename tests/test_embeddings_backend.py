@@ -1,7 +1,8 @@
 """TDD RED Phase: Tests for Embedding Backend Interface."""
 
-import pytest
 from unittest.mock import Mock, patch
+
+import pytest
 
 
 def test_embedding_backend_interface():

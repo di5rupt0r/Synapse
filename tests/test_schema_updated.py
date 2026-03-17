@@ -1,8 +1,9 @@
 """TDD RED Phase: Tests for Updated Schema with Chunk support."""
 
+from datetime import datetime
+
 import pytest
 from pydantic import ValidationError
-from datetime import datetime
 
 
 def test_chunk_model_basic():
@@ -83,7 +84,7 @@ def test_chunk_model_optional_fields():
 
 def test_updated_node_model_with_chunks():
     """Test updated Node model with chunks support."""
-    from synapse.schema.node import SynapseNode, Chunk
+    from synapse.schema.node import Chunk, SynapseNode
 
     chunks = [
         Chunk(

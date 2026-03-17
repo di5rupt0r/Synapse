@@ -1,7 +1,8 @@
 """TDD RED Phase: Tests for UniXCoder Embedding Backend."""
 
-import pytest
 from unittest.mock import Mock, patch
+
+import pytest
 
 
 def test_unixcoder_backend_initialization():

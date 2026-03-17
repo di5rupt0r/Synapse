@@ -1,6 +1,7 @@
 """TDD RED Phase: Tests for FastAPI Server."""
 
 from unittest.mock import Mock, patch
+
 from fastapi.testclient import TestClient
 
 

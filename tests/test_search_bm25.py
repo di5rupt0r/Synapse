@@ -4,8 +4,8 @@
 def test_bm25_index_initialization():
     """Test BM25 index initialization with chunks."""
     # This will fail - BM25Index doesn't exist yet (RED phase)
-    from synapse.search.bm25 import BM25Index
     from synapse.schema.node import Chunk
+    from synapse.search.bm25 import BM25Index
 
     chunks = [
         Chunk(
@@ -36,8 +36,8 @@ def test_bm25_index_initialization():
 
 def test_bm25_search_basic():
     """Test basic BM25 search functionality."""
-    from synapse.search.bm25 import BM25Index
     from synapse.schema.node import Chunk
+    from synapse.search.bm25 import BM25Index
 
     chunks = [
         Chunk(
@@ -90,8 +90,8 @@ def test_bm25_search_basic():
 
 def test_bm25_search_empty_query():
     """Test BM25 search with empty query."""
-    from synapse.search.bm25 import BM25Index
     from synapse.schema.node import Chunk
+    from synapse.search.bm25 import BM25Index
 
     chunks = [
         Chunk(
@@ -114,8 +114,8 @@ def test_bm25_search_empty_query():
 
 def test_bm25_search_no_results():
     """Test BM25 search with no matching results."""
-    from synapse.search.bm25 import BM25Index
     from synapse.schema.node import Chunk
+    from synapse.search.bm25 import BM25Index
 
     chunks = [
         Chunk(
@@ -138,8 +138,8 @@ def test_bm25_search_no_results():
 
 def test_bm25_search_top_k_limiting():
     """Test BM25 search respects top_k parameter."""
-    from synapse.search.bm25 import BM25Index
     from synapse.schema.node import Chunk
+    from synapse.search.bm25 import BM25Index
 
     chunks = [
         Chunk(
@@ -163,8 +163,8 @@ def test_bm25_search_top_k_limiting():
 
 def test_bm25_tokenization():
     """Test BM25 tokenization behavior."""
-    from synapse.search.bm25 import BM25Index
     from synapse.schema.node import Chunk
+    from synapse.search.bm25 import BM25Index
 
     chunks = [
         Chunk(
@@ -195,11 +195,12 @@ def test_bm25_tokenization():
 def test_bm25_performance_target():
     """Test BM25 search performance meets target (<10ms for 10k chunks)."""
     import time
-    from synapse.search.bm25 import BM25Index
-    from synapse.schema.node import Chunk
 
     # Create 1000 chunks (scaled down for testing)
     import uuid
+
+    from synapse.schema.node import Chunk
+    from synapse.search.bm25 import BM25Index
 
     chunks = [
         Chunk(

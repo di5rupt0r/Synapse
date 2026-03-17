@@ -1,8 +1,9 @@
 """TDD RED Phase: Tests for Synapse Node Schema."""
 
-import pytest
 import uuid
 from datetime import datetime
+
+import pytest
 from pydantic import ValidationError
 
 

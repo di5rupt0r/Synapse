@@ -1,6 +1,7 @@
 """TDD RED Phase: Tests for SynapseRedis wrapper."""
 
 from unittest.mock import Mock
+
 from synapse.redis.client import SynapseRedis
 
 
