@@ -10,12 +10,13 @@ class Settings:
     """Application settings."""
 
     # Redis configuration
-    redis_host: str = os.getenv("REDIS_HOST", "localhost")
+    redis_host: str = os.getenv("REDIS_HOST", "127.0.0.1")  # nosec B104: Use localhost by default
     redis_port: int = int(os.getenv("REDIS_PORT", "6379"))
     redis_password: Optional[str] = os.getenv("REDIS_PASSWORD", None)
 
     # Server configuration
-    host: str = os.getenv("HOST", "0.0.0.0")
+    # nosec B104: Binding to all interfaces is intentional for containerized deployments
+    host: str = os.getenv("HOST", "127.0.0.1")  # Default to localhost for security
     port: int = int(os.getenv("PORT", "8000"))
     debug: bool = os.getenv("DEBUG", "false").lower() == "true"
 

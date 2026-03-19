@@ -1,9 +1,6 @@
 """Tests for Redis Client - Coverage improvement."""
 
-import pytest
-from unittest.mock import Mock, MagicMock
-import json
-import struct
+from unittest.mock import Mock
 
 
 class TestSynapseRedis:

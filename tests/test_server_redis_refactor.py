@@ -1,6 +1,7 @@
 """Tests for Server Redis Refactor - MCP Standard."""
 
-from unittest.mock import Mock, patch, AsyncMock
+from unittest.mock import AsyncMock, patch
+
 from fastapi.testclient import TestClient
 
 

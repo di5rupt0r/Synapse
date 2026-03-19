@@ -1,8 +1,7 @@
 """Tests for MCP Discovery - 100% Coverage."""
 
-from unittest.mock import Mock, patch, MagicMock
-import pytest
 import time
+from unittest.mock import Mock
 
 
 class TestMCPDiscoveryInit:

@@ -1,12 +1,13 @@
 """MCP Server implementation using FastMCP."""
 
 from mcp.server.fastmcp import FastMCP
+
 from synapse.config import get_settings
-from synapse.redis.client import SynapseRedis
 from synapse.embeddings.cache import EmbeddingCache
 from synapse.mcp.memorize import MCPMemorize
-from synapse.mcp.recall import MCPRecall
 from synapse.mcp.patch import MCPPatch
+from synapse.mcp.recall import MCPRecall
+from synapse.redis.client import SynapseRedis
 
 settings = get_settings()
 

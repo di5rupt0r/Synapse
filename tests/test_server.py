@@ -1,7 +1,7 @@
 """Tests for FastAPI Server - MCP Standard Refactor."""
 
-from unittest.mock import Mock, patch, AsyncMock
-import pytest
+from unittest.mock import AsyncMock, Mock, patch
+
 from fastapi.testclient import TestClient
 
 

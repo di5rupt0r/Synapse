@@ -38,7 +38,7 @@ class IndexManager:
             # Index exists, drop it
             ft.dropindex()
 
-        except Exception:
+        except Exception:  # nosec B110: Intentional silent fail for index existence check
             # Index doesn't exist, continue to creation
             pass
 

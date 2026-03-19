@@ -1,6 +1,5 @@
 """Tests for Tree-sitter Chunking."""
 
-import pytest
 
 
 def test_extension_mapping():

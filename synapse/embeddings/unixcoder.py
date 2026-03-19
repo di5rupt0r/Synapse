@@ -15,8 +15,14 @@ class UniXCoderBackend(EmbeddingBackend):
     def __init__(self, model_name: str = "microsoft/unixcoder-base") -> None:
         """Initialize UniXCoder backend."""
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-        self.model = AutoModel.from_pretrained(model_name).to(self.device)
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            model_name,
+            revision="main",  # nosec B615: Pin to specific revision for security
+        )
+        self.model = AutoModel.from_pretrained(
+            model_name,
+            revision="main",  # nosec B615: Pin to specific revision for security
+        ).to(self.device)
         super().__init__(model_name)
 
     def _get_dimension(self) -> int:

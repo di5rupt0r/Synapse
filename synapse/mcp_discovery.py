@@ -35,12 +35,12 @@ class MCPDiscovery:
             pattern = f"{self.SERVER_PREFIX}*"
             keys = self.redis.keys(pattern)
             servers = []
-            
+
             for key in keys:
                 server_data = self.redis.json_get(key)
                 if server_data:
                     servers.append(server_data)
-            
+
             return servers
         except Exception:
             return []
@@ -50,18 +50,18 @@ class MCPDiscovery:
         try:
             server_key = f"{self.SERVER_PREFIX}{name}"
             server_data = self.redis.json_get(server_key)
-            
+
             if not server_data:
                 return None
-            
+
             # Include health data if available
             health_key = f"{self.HEALTH_PREFIX}{name}"
             health_data = self.redis.json_get(health_key)
-            
+
             result = {"server": server_data}
             if health_data:
                 result["health"] = health_data
-            
+
             return result
         except Exception:
             return None
@@ -71,14 +71,14 @@ class MCPDiscovery:
         try:
             server_key = f"{self.SERVER_PREFIX}{name}"
             server_data = self.redis.json_get(server_key)
-            
+
             if not server_data:
                 return []
-            
+
             # Extract tools from server capabilities
             capabilities = server_data.get("capabilities", [])
             tools = []
-            
+
             # Map capabilities to tool definitions
             tool_mapping = {
                 "memorize": {
@@ -87,13 +87,13 @@ class MCPDiscovery:
                     "endpoint": "/mcp/memorize"
                 },
                 "recall": {
-                    "name": "recall", 
+                    "name": "recall",
                     "description": "Hybrid search with latency tracking",
                     "endpoint": "/mcp/recall"
                 },
                 "patch": {
                     "name": "patch",
-                    "description": "Atomic mutations with request tracking", 
+                    "description": "Atomic mutations with request tracking",
                     "endpoint": "/mcp/patch"
                 },
                 "hybrid-search": {
@@ -102,11 +102,11 @@ class MCPDiscovery:
                     "endpoint": "/mcp/recall"
                 }
             }
-            
+
             for capability in capabilities:
                 if capability in tool_mapping:
                     tools.append(tool_mapping[capability])
-            
+
             return tools
         except Exception:
             return []

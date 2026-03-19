@@ -1,7 +1,8 @@
 """Tests for MCP Patch - 100% Coverage."""
 
-import pytest
 from unittest.mock import Mock
+
+import pytest
 
 
 class TestMCPPatch:

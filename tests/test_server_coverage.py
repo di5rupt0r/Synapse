@@ -1,7 +1,8 @@
 """Tests for server.py - 100% Coverage."""
 
+from unittest.mock import AsyncMock, Mock, patch
+
 import pytest
-from unittest.mock import Mock, patch, AsyncMock
 from fastapi.testclient import TestClient
 
 
@@ -309,3 +310,116 @@ class TestCreateTestClient:
         from synapse.server import create_test_client
         client = create_test_client()
         assert isinstance(client, TestClient)
+
+
+class TestServerMain:
+    """Test main block execution."""
+
+    def test_uvicorn_import(self):
+        """Test that uvicorn can be imported."""
+        try:
+            import uvicorn
+            assert True
+        except ImportError:
+            pytest.skip("uvicorn not installed")
+
+
+class TestLifespanContextManager:
+    """Test lifespan context manager."""
+
+    @pytest.mark.asyncio
+    async def test_lifespan_startup_shutdown(self):
+        """Test lifespan startup and shutdown."""
+        from fastapi import FastAPI
+
+        from synapse.server import lifespan
+
+        app = FastAPI()
+
+        with (
+            patch("synapse.server.get_settings") as mock_settings,
+            patch("redis.asyncio.from_url") as mock_redis_from_url,
+            patch("synapse.server.SynapseRedis") as mock_synapse_redis,
+            patch("synapse.server.UniXCoderBackend") as mock_unixcoder,
+            patch("synapse.server.EmbeddingCache") as mock_cache,
+            patch("synapse.server.IndexManager") as mock_index_manager,
+            patch("synapse.server.init_mcp") as mock_init_mcp,
+            patch("synapse.server.MCPDiscovery") as mock_mcp_discovery,
+            patch("asyncio.create_task") as mock_create_task,
+        ):
+            # Setup mocks
+            mock_settings_instance = Mock()
+            mock_settings_instance.redis_host = "localhost"
+            mock_settings_instance.redis_port = 6379
+            mock_settings_instance.cache_size = 1000
+            mock_settings.return_value = mock_settings_instance
+
+            mock_redis_client = Mock()
+            mock_redis_client.ping = AsyncMock()
+            mock_redis_from_url.return_value = mock_redis_client
+
+            mock_synapse_redis_instance = Mock()
+            mock_synapse_redis_instance.close = AsyncMock()
+            mock_synapse_redis.return_value = mock_synapse_redis_instance
+
+            mock_unixcoder_instance = Mock()
+            mock_unixcoder.return_value = mock_unixcoder_instance
+
+            mock_cache_instance = Mock()
+            mock_cache.return_value = mock_cache_instance
+
+            mock_index_manager_instance = Mock()
+            mock_index_manager_instance.ensure_index = Mock()
+            mock_index_manager.return_value = mock_index_manager_instance
+
+            mock_mcp_discovery_instance = Mock()
+            mock_mcp_discovery_instance.register_server = Mock()
+            mock_mcp_discovery.return_value = mock_mcp_discovery_instance
+
+            mock_task = Mock()
+            mock_task.cancel = Mock()
+            mock_create_task.return_value = mock_task
+
+            # Test lifespan
+            async with lifespan(app):
+                # Verify startup calls
+                mock_redis_from_url.assert_called_once()
+                mock_redis_client.ping.assert_called_once()
+                mock_synapse_redis.assert_called_once()
+                mock_unixcoder.assert_called_once()
+                mock_cache.assert_called_once()
+                mock_index_manager_instance.ensure_index.assert_called_once()
+                mock_init_mcp.assert_called_once()
+                mock_mcp_discovery.assert_called_once()
+                mock_mcp_discovery_instance.register_server.assert_called_once()
+                mock_create_task.assert_called_once()
+
+            # Verify shutdown calls
+            mock_task.cancel.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_lifespan_exception_handling(self):
+        """Test lifespan handles exceptions gracefully."""
+        from fastapi import FastAPI
+
+        from synapse.server import lifespan
+
+        app = FastAPI()
+
+        with (
+            patch("synapse.server.get_settings") as mock_settings,
+            patch("redis.asyncio.from_url") as mock_redis_from_url,
+        ):
+            mock_settings_instance = Mock()
+            mock_settings_instance.redis_host = "localhost"
+            mock_settings_instance.redis_port = 6379
+            mock_settings.return_value = mock_settings_instance
+
+            mock_redis_client = Mock()
+            mock_redis_client.ping = AsyncMock(side_effect=Exception("Redis connection failed"))
+            mock_redis_from_url.return_value = mock_redis_client
+
+            # Should raise exception during startup
+            with pytest.raises(Exception, match="Redis connection failed"):
+                async with lifespan(app):
+                    pass

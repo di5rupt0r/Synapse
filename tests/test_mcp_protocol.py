@@ -1,7 +1,8 @@
 """MCP Protocol Tests - FastMCP integration."""
 
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
 
 
 class TestMCPInitialization:
@@ -16,8 +17,8 @@ class TestMCPInitialization:
     def test_initialize_sets_globals(self):
         """GREEN: initialize() sets redis and cache globals."""
         import synapse.mcp_server as mcp_mod
-        from synapse.redis.client import SynapseRedis
         from synapse.embeddings.cache import EmbeddingCache
+        from synapse.redis.client import SynapseRedis
 
         mock_redis = MagicMock(spec=SynapseRedis)
         mock_cache = MagicMock(spec=EmbeddingCache)

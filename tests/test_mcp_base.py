@@ -1,7 +1,5 @@
 """Tests for MCP Base - 100% Coverage."""
 
-import pytest
-from unittest.mock import Mock
 
 
 class TestMCPRequest:
@@ -92,11 +90,11 @@ class TestMCPBase:
         """Test register decorator."""
         from synapse.mcp.base import MCPBase
         base = MCPBase()
-        
+
         @base.register("test_method")
         def test_handler(params):
             return {"status": "ok"}
-        
+
         assert "test_method" in base.methods
         assert base.methods["test_method"] == test_handler
 
@@ -104,11 +102,11 @@ class TestMCPBase:
         """Test handle_request with registered method."""
         from synapse.mcp.base import MCPBase
         base = MCPBase()
-        
+
         @base.register("test_method")
         def test_handler(params):
             return {"status": "ok"}
-        
+
         raw_request = {
             "jsonrpc": "2.0",
             "id": "test-123",
@@ -124,7 +122,7 @@ class TestMCPBase:
         """Test handle_request with unregistered method."""
         from synapse.mcp.base import MCPBase
         base = MCPBase()
-        
+
         raw_request = {
             "jsonrpc": "2.0",
             "id": "test-123",
@@ -140,11 +138,11 @@ class TestMCPBase:
         """Test handle_request when handler raises exception."""
         from synapse.mcp.base import MCPBase
         base = MCPBase()
-        
+
         @base.register("error_method")
         def error_handler(params):
             raise ValueError("Test error")
-        
+
         raw_request = {
             "jsonrpc": "2.0",
             "id": "test-123",

@@ -1,7 +1,9 @@
 """Tests for BM25 Search - 100% Coverage."""
 
-import pytest
 import uuid
+
+import pytest
+
 from synapse.schema.node import Chunk
 
 
@@ -155,7 +157,6 @@ class TestBM25Index:
 
     def test_get_stats_empty(self):
         """Test get_stats with empty index - requires at least one chunk due to BM25 limitation."""
-        from synapse.search.bm25 import BM25Index
         # BM25 cannot handle empty corpus, so this test is skipped
         # The get_stats method handles empty case but BM25 init fails
         pytest.skip("BM25 cannot be initialized with empty corpus")
