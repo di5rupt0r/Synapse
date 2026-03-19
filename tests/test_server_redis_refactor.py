@@ -14,7 +14,7 @@ def test_server_health_check():
     with (
         patch("synapse.server.synapse_redis") as mock_redis,
         patch("synapse.server.embedding_cache") as mock_cache,
-        patch("synapse.server.mcp_discovery") as mock_discovery,
+        patch("synapse.server.mcp_discovery"),
     ):
         mock_redis.ping = AsyncMock(return_value=True)
         mock_cache.embed.return_value = [0.1] * 384

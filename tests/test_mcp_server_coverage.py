@@ -41,8 +41,8 @@ class TestMCPToolsRegistration:
         from synapse.mcp_server import memorize
 
         with (
-            patch("synapse.mcp_server.synapse_redis") as mock_redis,
-            patch("synapse.mcp_server.embedding_cache") as mock_cache,
+            patch("synapse.mcp_server.synapse_redis"),
+            patch("synapse.mcp_server.embedding_cache"),
             patch("synapse.mcp_server.MCPMemorize") as mock_handler,
         ):
             mock_handler_instance = Mock()
@@ -60,8 +60,8 @@ class TestMCPToolsRegistration:
         from synapse.mcp_server import recall
 
         with (
-            patch("synapse.mcp_server.synapse_redis") as mock_redis,
-            patch("synapse.mcp_server.embedding_cache") as mock_cache,
+            patch("synapse.mcp_server.synapse_redis"),
+            patch("synapse.mcp_server.embedding_cache"),
             patch("synapse.mcp_server.MCPRecall") as mock_handler,
         ):
             mock_handler_instance = Mock()
@@ -79,7 +79,7 @@ class TestMCPToolsRegistration:
         from synapse.mcp_server import patch as patch_tool
 
         with (
-            patch("synapse.mcp_server.synapse_redis") as mock_redis,
+            patch("synapse.mcp_server.synapse_redis"),
             patch("synapse.mcp_server.MCPPatch") as mock_handler,
         ):
             mock_handler_instance = Mock()
@@ -101,15 +101,15 @@ class TestMCPToolInvocation:
         from synapse.mcp_server import memorize
 
         with (
-            patch("synapse.mcp_server.synapse_redis") as mock_redis,
-            patch("synapse.mcp_server.embedding_cache") as mock_cache,
+            patch("synapse.mcp_server.synapse_redis"),
+            patch("synapse.mcp_server.embedding_cache"),
             patch("synapse.mcp_server.MCPMemorize") as mock_handler,
         ):
             mock_handler_instance = Mock()
             mock_handler.return_value = mock_handler_instance
             mock_handler_instance.handle_memorize.return_value = {"id": "test", "status": "success"}
 
-            result = await memorize(
+            await memorize(
                 domain="github",
                 type="entity",
                 content="test content",
@@ -132,15 +132,15 @@ class TestMCPToolInvocation:
         from synapse.mcp_server import recall
 
         with (
-            patch("synapse.mcp_server.synapse_redis") as mock_redis,
-            patch("synapse.mcp_server.embedding_cache") as mock_cache,
+            patch("synapse.mcp_server.synapse_redis"),
+            patch("synapse.mcp_server.embedding_cache"),
             patch("synapse.mcp_server.MCPRecall") as mock_handler,
         ):
             mock_handler_instance = Mock()
             mock_handler.return_value = mock_handler_instance
             mock_handler_instance.handle_recall.return_value = {"results": [], "total": 0}
 
-            result = await recall(
+            await recall(
                 query="test query",
                 domain=["github", "docs"],
                 type=["entity", "chunk"],
@@ -163,7 +163,7 @@ class TestMCPToolInvocation:
         from synapse.mcp_server import patch as patch_tool
 
         with (
-            patch("synapse.mcp_server.synapse_redis") as mock_redis,
+            patch("synapse.mcp_server.synapse_redis"),
             patch("synapse.mcp_server.MCPPatch") as mock_handler,
         ):
             mock_handler_instance = Mock()
@@ -175,7 +175,7 @@ class TestMCPToolInvocation:
                 {"op": "delete", "path": "$.old_field"}
             ]
 
-            result = await patch_tool("test_node_id", operations)
+            await patch_tool("test_node_id", operations)
 
             expected_params = {
                 "node_id": "test_node_id",

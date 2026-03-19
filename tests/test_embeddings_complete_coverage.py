@@ -389,7 +389,7 @@ class TestEmbeddingBackendComplete:
         with (
             patch("synapse.embeddings.unixcoder.torch.cuda.is_available", return_value=False),
             patch("synapse.embeddings.unixcoder.AutoTokenizer") as mock_tokenizer,
-            patch("synapse.embeddings.unixcoder.AutoModel") as mock_model,
+            patch("synapse.embeddings.unixcoder.AutoModel"),
         ):
             mock_tokenizer_instance = Mock()
             mock_tokenizer_instance.side_effect = Exception("Tokenizer error")

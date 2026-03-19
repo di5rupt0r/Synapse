@@ -17,7 +17,7 @@ class TestServerHealth:
         with (
             patch("synapse.server.synapse_redis") as mock_redis,
             patch("synapse.server.embedding_cache") as mock_cache,
-            patch("synapse.server.mcp_discovery") as mock_discovery,
+            patch("synapse.server.mcp_discovery"),
             patch("synapse.server.get_settings") as mock_settings,
         ):
             mock_redis.ping = AsyncMock(return_value=True)
@@ -317,11 +317,9 @@ class TestServerMain:
 
     def test_uvicorn_import(self):
         """Test that uvicorn can be imported."""
-        try:
-            import uvicorn
-            assert True
-        except ImportError:
-            pytest.skip("uvicorn not installed")
+        import importlib.util
+        spec = importlib.util.find_spec("uvicorn")
+        assert spec is not None, "uvicorn not installed"
 
 
 class TestLifespanContextManager:

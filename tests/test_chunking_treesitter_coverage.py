@@ -83,7 +83,7 @@ class TestTreeSitterChunking:
         from synapse.chunking.treesitter import get_parser
 
         with (
-            patch("synapse.chunking.treesitter.Language") as mock_language,
+            patch("synapse.chunking.treesitter.Language"),
             patch("synapse.chunking.treesitter.Parser") as mock_parser,
             patch("builtins.__import__") as mock_import,
         ):
@@ -102,8 +102,8 @@ class TestTreeSitterChunking:
         from synapse.chunking.treesitter import get_parser
 
         with (
-            patch("synapse.chunking.treesitter.Language") as mock_language,
-            patch("synapse.chunking.treesitter.Parser") as mock_parser,
+            patch("synapse.chunking.treesitter.Language"),
+            patch("synapse.chunking.treesitter.Parser"),
             patch("builtins.__import__") as mock_import,
         ):
             # First import fails, Python fallback succeeds
@@ -121,7 +121,7 @@ class TestTreeSitterChunking:
         from synapse.chunking.treesitter import get_parser
 
         with (
-            patch("synapse.chunking.treesitter.Language") as mock_language,
+            patch("synapse.chunking.treesitter.Language"),
             patch("builtins.__import__") as mock_import,
         ):
             mock_import.side_effect = ImportError("Language not found")
@@ -137,7 +137,7 @@ class TestTreeSitterChunking:
         from synapse.chunking.treesitter import get_parser
 
         with (
-            patch("synapse.chunking.treesitter.Language") as mock_language,
+            patch("synapse.chunking.treesitter.Language"),
             patch("synapse.chunking.treesitter.Parser") as mock_parser,
             patch("builtins.__import__") as mock_import,
         ):
