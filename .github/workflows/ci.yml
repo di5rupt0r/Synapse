@@ -176,8 +176,8 @@ jobs:
             echo "--- Recent logs (last 50 lines) ---"
             sudo journalctl -u synapse-server --no-pager -n 50 | tail -20
             
-            # Look for specific error patterns
-            if sudo journalctl -u synapse-server --no-pager -n 50 | grep -qi "error\|exception\|failed"; then
+            # Look for specific error patterns (use word boundaries to avoid false positives)
+            if sudo journalctl -u synapse-server --no-pager -n 50 | grep -qiE "\b(error|exception|failed|traceback|attributeerror|importerror)\b"; then
               echo "❌ Errors detected in logs - dumping full context:"
               sudo journalctl -u synapse-server --no-pager -n 100
               exit 1
