@@ -131,9 +131,39 @@ jobs:
             sudo -u synapse git reset --hard origin/main
             sudo -u synapse /opt/synapse/venv/bin/pip install -r requirements.txt
             sudo systemctl restart synapse-server
-            sleep 10
-            curl -sf http://localhost:8000/health || exit 1
-            echo "Deployment completed successfully!"
+            echo "Service restarted, waiting for startup..."
+            sleep 15
+            
+            # Check service status
+            if sudo systemctl is-active --quiet synapse-server; then
+              echo "✅ Synapse server is running"
+            else
+              echo "❌ Synapse server failed to start"
+              sudo systemctl status synapse-server
+              exit 1
+            fi
+            
+            # Health check with debugging
+            echo "Testing health endpoint..."
+            for i in {1..5}; do
+              if curl -sf http://localhost:8000/health; then
+                echo "✅ Health check passed"
+                break
+              else
+                echo "⚠️ Health check attempt $i failed, retrying..."
+                sleep 5
+              fi
+            done
+            
+            # Final verification
+            if curl -sf http://localhost:8000/health; then
+              echo "✅ Deployment completed successfully!"
+            else
+              echo "❌ Health check failed after retries"
+              echo "Checking logs..."
+              sudo journalctl -u synapse-server --no-pager -n 20
+              exit 1
+            fi
 
       - name: Deployment Status
         if: always()
