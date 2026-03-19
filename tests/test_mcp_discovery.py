@@ -1,131 +1,250 @@
-"""Tests for MCP Discovery functionality - RED Phase."""
+"""Tests for MCP Discovery - 100% Coverage."""
 
+from unittest.mock import Mock, patch, MagicMock
 import pytest
-from unittest.mock import Mock, patch
-from fastapi.testclient import TestClient
-from synapse.server import app
+import time
 
 
-class TestMCPDiscoveryEndpoints:
-    """Test MCP Discovery HTTP endpoints - RED Phase."""
+class TestMCPDiscoveryInit:
+    """Test MCPDiscovery initialization."""
 
-    def setup_method(self):
-        """Set up test client."""
-        self.client = TestClient(app)
+    def test_init_sets_redis_client(self):
+        """Test __init__ sets redis client."""
+        from synapse.mcp_discovery import MCPDiscovery
+        mock_redis = Mock()
+        discovery = MCPDiscovery(mock_redis)
+        assert discovery.redis == mock_redis
 
-    @patch('synapse.server.mcp_discovery')
-    def test_list_mcp_servers_endpoint_should_exist(self, mock_discovery):
-        """Test /mcp/servers endpoint should exist and return 200."""
-        mock_discovery.list_servers.return_value = []
-        
-        response = self.client.get("/mcp/servers")
-        
-        # This should work now - GREEN phase
-        assert response.status_code == 200
-        data = response.json()
-        assert "servers" in data
-        assert "count" in data
-        assert "timestamp" in data
 
-    @patch('synapse.server.mcp_discovery')
-    def test_get_mcp_server_info_endpoint_should_exist(self, mock_discovery):
-        """Test /mcp/server/{name} endpoint should exist."""
-        mock_discovery.get_server_info.return_value = {"server": {"name": "synapse"}}
-        
-        response = self.client.get("/mcp/server/synapse")
-        
-        # This should work now - GREEN phase
-        assert response.status_code == 200
-        data = response.json()
-        assert "server" in data
+class TestMCPDiscoveryRegisterServer:
+    """Test register_server method."""
 
-    @patch('synapse.server.mcp_discovery')
-    def test_get_mcp_server_tools_endpoint_should_exist(self, mock_discovery):
-        """Test /mcp/server/{name}/tools endpoint should exist."""
-        mock_discovery.get_server_tools.return_value = []
-        
-        response = self.client.get("/mcp/server/synapse/tools")
-        
-        # This should work now - GREEN phase
-        assert response.status_code == 200
-        data = response.json()
-        assert "tools" in data
-        assert "count" in data
-        assert "server" in data
+    def test_register_server_success(self):
+        """Test successful server registration."""
+        from synapse.mcp_discovery import MCPDiscovery
+        mock_redis = Mock()
+        mock_redis.json_set.return_value = True
 
-    @patch('synapse.server.mcp_discovery')
-    def test_register_mcp_server_endpoint_should_exist(self, mock_discovery):
-        """Test /mcp/server/{name}/register endpoint should exist."""
-        mock_discovery.register_server.return_value = True
-        
-        server_data = {
+        discovery = MCPDiscovery(mock_redis)
+        result = discovery.register_server("test-server", {
             "name": "test-server",
-            "description": "Test Server",
-            "capabilities": ["test"]
-        }
-        
-        response = self.client.post("/mcp/server/test-server/register", json=server_data)
-        
-        # This should work now - GREEN phase
-        assert response.status_code == 200
-        data = response.json()
-        assert data["status"] == "registered"
-        assert data["server"] == "test-server"
+            "version": "1.0.0",
+            "capabilities": ["memorize"]
+        })
 
-    @patch('synapse.server.mcp_discovery')
-    def test_update_server_health_endpoint_should_exist(self, mock_discovery):
-        """Test /mcp/server/{name}/health endpoint should exist."""
-        mock_discovery.update_health.return_value = True
-        
-        health_data = {"status": "healthy"}
-        
-        response = self.client.post("/mcp/server/test-server/health", json=health_data)
-        
-        # This should work now - GREEN phase
-        assert response.status_code == 200
-        data = response.json()
-        assert data["status"] == "updated"
-        assert data["server"] == "test-server"
+        assert result is True
+        mock_redis.json_set.assert_called_once()
 
-    @patch('synapse.server.mcp_discovery')
-    def test_synapse_server_should_auto_register(self, mock_discovery):
-        """Test that synapse server auto-registers on startup."""
-        # Mock the server list to include synapse
-        mock_discovery.list_servers.return_value = [
-            {"name": "synapse", "status": "active"}
+    def test_register_server_failure(self):
+        """Test server registration failure."""
+        from synapse.mcp_discovery import MCPDiscovery
+        mock_redis = Mock()
+        mock_redis.json_set.side_effect = Exception("Redis error")
+
+        discovery = MCPDiscovery(mock_redis)
+        result = discovery.register_server("test-server", {})
+
+        assert result is False
+
+    def test_register_server_sets_timestamp_and_status(self):
+        """Test register_server adds timestamp and status."""
+        from synapse.mcp_discovery import MCPDiscovery
+        mock_redis = Mock()
+        mock_redis.json_set.return_value = True
+
+        discovery = MCPDiscovery(mock_redis)
+        discovery.register_server("test-server", {"name": "test"})
+
+        call_args = mock_redis.json_set.call_args
+        server_data = call_args[0][2]
+        assert "registered_at" in server_data
+        assert server_data["status"] == "active"
+
+
+class TestMCPDiscoveryListServers:
+    """Test list_servers method."""
+
+    def test_list_servers_success(self):
+        """Test successful server listing."""
+        from synapse.mcp_discovery import MCPDiscovery
+        mock_redis = Mock()
+        mock_redis.keys.return_value = ["mcp:server:server1", "mcp:server:server2"]
+        mock_redis.json_get.side_effect = [
+            {"name": "server1"},
+            {"name": "server2"}
         ]
-        
-        # After server startup, synapse should be in the server list
-        response = self.client.get("/mcp/servers")
-        
-        # This should work now - GREEN phase
-        assert response.status_code == 200
-        data = response.json()
-        server_names = [server["name"] for server in data["servers"]]
-        assert "synapse" in server_names
 
-    @patch('synapse.server.mcp_discovery')
-    @patch('synapse.server.synapse_redis')
-    @patch('synapse.server.embedding_cache')
-    def test_health_endpoint_should_update_discovery_health(self, mock_cache, mock_redis, mock_discovery):
-        """Test that health endpoint updates MCP discovery health data."""
-        # Mock Redis and embedding cache to avoid connection issues
-        mock_redis.ping.return_value = True
-        mock_cache.embed.return_value = [0.1, 0.2, 0.3]
-        mock_cache.get_stats.return_value = {"hits": 10, "misses": 2}
-        
-        # Mock health update
-        mock_discovery.update_health.return_value = True
-        
-        # Call health endpoint
-        response = self.client.get("/health")
-        
-        # This should work now - GREEN phase
-        assert response.status_code == 200
-        
-        # Verify health update was called
-        mock_discovery.update_health.assert_called_once()
+        discovery = MCPDiscovery(mock_redis)
+        result = discovery.list_servers()
+
+        assert len(result) == 2
+        assert result[0]["name"] == "server1"
+
+    def test_list_servers_empty(self):
+        """Test listing with no servers."""
+        from synapse.mcp_discovery import MCPDiscovery
+        mock_redis = Mock()
+        mock_redis.keys.return_value = []
+
+        discovery = MCPDiscovery(mock_redis)
+        result = discovery.list_servers()
+
+        assert result == []
+
+    def test_list_servers_error(self):
+        """Test list_servers with Redis error."""
+        from synapse.mcp_discovery import MCPDiscovery
+        mock_redis = Mock()
+        mock_redis.keys.side_effect = Exception("Redis error")
+
+        discovery = MCPDiscovery(mock_redis)
+        result = discovery.list_servers()
+
+        assert result == []
 
 
-if __name__ == "__main__":
-    pytest.main([__file__])
+class TestMCPDiscoveryGetServerInfo:
+    """Test get_server_info method."""
+
+    def test_get_server_info_success(self):
+        """Test successful server info retrieval."""
+        from synapse.mcp_discovery import MCPDiscovery
+        mock_redis = Mock()
+        mock_redis.json_get.side_effect = [
+            {"name": "test-server", "capabilities": ["memorize"]},
+            {"status": "healthy"}
+        ]
+
+        discovery = MCPDiscovery(mock_redis)
+        result = discovery.get_server_info("test-server")
+
+        assert "server" in result
+        assert "health" in result
+        assert result["server"]["name"] == "test-server"
+
+    def test_get_server_info_not_found(self):
+        """Test get_server_info for non-existent server."""
+        from synapse.mcp_discovery import MCPDiscovery
+        mock_redis = Mock()
+        mock_redis.json_get.return_value = None
+
+        discovery = MCPDiscovery(mock_redis)
+        result = discovery.get_server_info("nonexistent")
+
+        assert result is None
+
+    def test_get_server_info_no_health_data(self):
+        """Test get_server_info without health data."""
+        from synapse.mcp_discovery import MCPDiscovery
+        mock_redis = Mock()
+        mock_redis.json_get.side_effect = [
+            {"name": "test-server"},
+            None  # No health data
+        ]
+
+        discovery = MCPDiscovery(mock_redis)
+        result = discovery.get_server_info("test-server")
+
+        assert "server" in result
+        assert "health" not in result
+
+    def test_get_server_info_error(self):
+        """Test get_server_info with Redis error."""
+        from synapse.mcp_discovery import MCPDiscovery
+        mock_redis = Mock()
+        mock_redis.json_get.side_effect = Exception("Redis error")
+
+        discovery = MCPDiscovery(mock_redis)
+        result = discovery.get_server_info("test-server")
+
+        assert result is None
+
+
+class TestMCPDiscoveryGetServerTools:
+    """Test get_server_tools method."""
+
+    def test_get_server_tools_success(self):
+        """Test successful tools retrieval."""
+        from synapse.mcp_discovery import MCPDiscovery
+        mock_redis = Mock()
+        mock_redis.json_get.return_value = {
+            "name": "synapse",
+            "capabilities": ["memorize", "recall", "patch", "hybrid-search"]
+        }
+
+        discovery = MCPDiscovery(mock_redis)
+        result = discovery.get_server_tools("synapse")
+
+        assert len(result) == 4
+        tool_names = [t["name"] for t in result]
+        assert "memorize" in tool_names
+        assert "recall" in tool_names
+        assert "patch" in tool_names
+
+    def test_get_server_tools_server_not_found(self):
+        """Test get_server_tools for non-existent server."""
+        from synapse.mcp_discovery import MCPDiscovery
+        mock_redis = Mock()
+        mock_redis.json_get.return_value = None
+
+        discovery = MCPDiscovery(mock_redis)
+        result = discovery.get_server_tools("nonexistent")
+
+        assert result == []
+
+    def test_get_server_tools_unknown_capability(self):
+        """Test get_server_tools filters unknown capabilities."""
+        from synapse.mcp_discovery import MCPDiscovery
+        mock_redis = Mock()
+        mock_redis.json_get.return_value = {
+            "capabilities": ["memorize", "unknown-capability"]
+        }
+
+        discovery = MCPDiscovery(mock_redis)
+        result = discovery.get_server_tools("test")
+
+        assert len(result) == 1
+        assert result[0]["name"] == "memorize"
+
+    def test_get_server_tools_error(self):
+        """Test get_server_tools with Redis error."""
+        from synapse.mcp_discovery import MCPDiscovery
+        mock_redis = Mock()
+        mock_redis.json_get.side_effect = Exception("Redis error")
+
+        discovery = MCPDiscovery(mock_redis)
+        result = discovery.get_server_tools("test-server")
+
+        assert result == []
+
+
+class TestMCPDiscoveryUpdateHealth:
+    """Test update_health method."""
+
+    def test_update_health_success(self):
+        """Test successful health update."""
+        from synapse.mcp_discovery import MCPDiscovery
+        mock_redis = Mock()
+        mock_redis.json_set.return_value = True
+
+        discovery = MCPDiscovery(mock_redis)
+        result = discovery.update_health("test-server", {
+            "status": "healthy",
+            "timestamp": time.time()
+        })
+
+        assert result is True
+        call_args = mock_redis.json_set.call_args
+        health_data = call_args[0][2]
+        assert "updated_at" in health_data
+
+    def test_update_health_failure(self):
+        """Test health update failure."""
+        from synapse.mcp_discovery import MCPDiscovery
+        mock_redis = Mock()
+        mock_redis.json_set.side_effect = Exception("Redis error")
+
+        discovery = MCPDiscovery(mock_redis)
+        result = discovery.update_health("test-server", {})
+
+        assert result is False

@@ -35,8 +35,9 @@ async def lifespan(app: FastAPI):
     settings = get_settings()
 
     # Initialize Redis
+    redis_url = f"redis://{settings.redis_host}:{settings.redis_port}"
     redis_client = redis_async.from_url(
-        settings.redis_url,
+        redis_url,
         decode_responses=True,
         socket_connect_timeout=5,
         socket_keepalive=True
@@ -134,102 +135,6 @@ async def health_check():
             mcp_discovery.update_health("synapse", error_data)
             
         return JSONResponse(status_code=503, content=error_data)
-
-
-@app.post("/mcp/memorize")
-async def memorize_endpoint(request: Request):
-    """Accept both JSON-RPC 2.0 and direct payload."""
-    try:
-        body = await request.json()
-
-        # Detectar formato
-        if "jsonrpc" in body:
-            # JSON-RPC 2.0
-            params = body.get("params", {})
-        else:
-            # Payload direto (o que o deployment spec usa)
-            params = body
-
-        result = mcp_memorize.handle_memorize(params)
-        return result
-
-    except Exception as e:
-        return JSONResponse(
-            status_code=500, content={"status": "error", "error": str(e)}
-        )
-
-
-@app.post("/mcp/recall")
-async def recall_endpoint(request: Dict[str, Any]):
-    """MCP recall endpoint - hybrid search."""
-    start_time = time.time()
-
-    try:
-        # Add request ID for tracking
-        request["request_id"] = str(uuid.uuid4())
-
-        # Process through MCP handler
-        result = mcp_recall.handle_request(request)
-
-        # Calculate latency
-        latency_ms = (time.time() - start_time) * 1000
-
-        # Add metadata
-        if "result" in result:
-            result["result"]["metadata"] = {
-                "request_id": request["request_id"],
-                "latency_ms": round(latency_ms, 2),
-                "timestamp": time.time(),
-                "query": request.get("params", {}).get("query", ""),
-            }
-
-        return result
-
-    except Exception as e:
-        return JSONResponse(
-            status_code=500,
-            content={
-                "jsonrpc": "2.0",
-                "id": request.get("id", ""),
-                "error": {"code": -32603, "message": str(e)},
-            },
-        )
-
-
-@app.post("/mcp/patch")
-async def patch_endpoint(request: Dict[str, Any]):
-    """MCP patch endpoint - atomic mutations."""
-    start_time = time.time()
-
-    try:
-        # Add request ID for tracking
-        request["request_id"] = str(uuid.uuid4())
-
-        # Process through MCP handler
-        result = mcp_patch.handle_request(request)
-
-        # Calculate latency
-        latency_ms = (time.time() - start_time) * 1000
-
-        # Add metadata
-        if "result" in result:
-            result["result"]["metadata"] = {
-                "request_id": request["request_id"],
-                "latency_ms": round(latency_ms, 2),
-                "timestamp": time.time(),
-            }
-
-        return result
-
-    except Exception as e:
-        return JSONResponse(
-            status_code=500,
-            content={
-                "jsonrpc": "2.0",
-                "id": request.get("id", ""),
-                "error": {"code": -32603, "message": str(e)},
-            },
-        )
 
 
 @app.get("/metrics")
