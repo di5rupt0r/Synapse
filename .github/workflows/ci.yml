@@ -106,7 +106,6 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     environment: production
-    continue-on-error: true
     steps:
       - name: Authenticate with Tailscale
         uses: tailscale/github-action@v4
@@ -116,24 +115,35 @@ jobs:
           tags: tag:ci
 
       - name: Deploy via SSH
-        continue-on-error: true
-        run: |
-          echo "🔧 DEPLOYMENT DISABLED - TAILSACLE ACL REQUIRED"
-          echo ""
-          echo "To enable deployment, update Tailscale ACL policy:"
-          echo "1. Go to Tailscale admin console"
-          echo "2. Add this ACL rule:"
-          echo '   {"action": "accept", "src": ["tag:ci"], "dst": ["autogroup:member:22"]}'
-          echo "3. Remove continue-on-error from deploy job"
-          echo ""
-          echo "Current status: SSH blocked by Tailscale policy"
-          exit 0
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
+          timeout: 30s
+          command_timeout: 10m
+          script: |
+            set -e
+            echo "Starting deployment to production server..."
+            cd /opt/synapse
+            sudo -u synapse git fetch origin main
+            sudo -u synapse git reset --hard origin/main
+            sudo -u synapse /opt/synapse/venv/bin/pip install -r requirements.txt
+            sudo systemctl restart synapse-server
+            sleep 10
+            curl -sf http://localhost:8000/health || exit 1
+            echo "Deployment completed successfully!"
 
       - name: Deployment Status
         if: always()
         run: |
-          echo "🚧 Deployment temporarily disabled"
-          echo "See previous step for ACL configuration instructions"
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ Deployment completed successfully"
+          else
+            echo "❌ Deployment failed"
+            exit 1
+          fi
 
       - name: Notify failure
         if: failure()
