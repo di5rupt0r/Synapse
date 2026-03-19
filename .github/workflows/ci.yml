@@ -116,36 +116,25 @@ jobs:
 
 
       - name: Deploy via SSH
-        run: |
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > /tmp/ssh_key
-          chmod 600 /tmp/ssh_key
-          
-          # Try using existing SSH profile
-          if ssh -i /tmp/ssh_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "echo 'SSH connection successful'"; then
-            echo "✅ SSH connection established, starting deployment..."
-            ssh -i /tmp/ssh_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "
-              set -e
-              echo 'Starting deployment to production server...'
-              cd /opt/synapse
-              sudo -u synapse git fetch origin main
-              sudo -u synapse git reset --hard origin/main
-              sudo -u synapse /opt/synapse/venv/bin/pip install -r requirements.txt
-              sudo systemctl restart synapse-server
-              sleep 10
-              curl -sf http://localhost:8000/health || exit 1
-              echo 'Deployment completed successfully!'
-            "
-          else
-            echo "❌ SSH connection still blocked by Tailscale policy"
-            echo "🔧 Try this alternative approach:"
-            echo "1. Check exact ACL syntax in Tailscale admin console"
-            echo "2. Ensure GitHub Actions user is in correct group"
-            echo "3. Verify tag owner field includes GitHub Actions"
-            echo "4. Test with: tailscale ssh ${{ secrets.SSH_HOST }} 'echo test'"
-            exit 1
-          fi
-          
-          rm -f /tmp/ssh_key
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
+          timeout: 30s
+          command_timeout: 10m
+          script: |
+            set -e
+            echo "Starting deployment to production server..."
+            cd /opt/synapse
+            sudo -u synapse git fetch origin main
+            sudo -u synapse git reset --hard origin/main
+            sudo -u synapse /opt/synapse/venv/bin/pip install -r requirements.txt
+            sudo systemctl restart synapse-server
+            sleep 10
+            curl -sf http://localhost:8000/health || exit 1
+            echo "Deployment completed successfully!"
 
       - name: Deployment Status
         if: always()
