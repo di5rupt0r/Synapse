@@ -1,0 +1,21 @@
+# MCPize Configuration
+# Docs: https://mcpize.com/docs/mcpize-yaml
+
+version: 1
+
+name: "Synapse"
+slug: "synapse"
+
+runtime: python
+entry: "src/server.py"
+
+build:
+  install: "pip install --no-cache-dir ."
+  command: "pip install -r requirements.txt"
+
+start:
+  type: http
+  command: "python src/server.py"
+
+bridge:
+  mode: http
