@@ -1,4 +1,5 @@
 # Synapse AKG: Agentic Knowledge Graph
+[![MCPize](https://mcpize.com/badge/@di5rupt0r/synapse)](https://mcpize.com/mcp/synapse)
 
 A high-performance knowledge graph system with hybrid search capabilities, built for AI agents and built with Test-Driven Development (TDD) methodology.
 
@@ -84,6 +85,16 @@ cp .env.example .env
 # Edit configuration
 nano .env
 ```
+
+## Connect via MCPize
+
+Use this MCP server instantly with no local installation:
+
+```bash
+npx -y mcpize connect @di5rupt0r/synapse --client claude
+```
+
+Or connect at: **https://mcpize.com/mcp/synapse**
 
 ## 🚀 Quick Start
 
