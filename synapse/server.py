@@ -1,20 +1,16 @@
 """FastAPI Server for Synapse AKG."""
 
-import asyncio
 import time
 from contextlib import asynccontextmanager
-from typing import Any, Dict
 
 import redis.asyncio as redis_async
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-from fastapi.testclient import TestClient
 
 from .config import get_settings
 from .embeddings.cache import EmbeddingCache
 from .embeddings.unixcoder import UniXCoderBackend
 from .index.setup import IndexManager
-from .mcp_discovery import MCPDiscovery
 from .mcp_server import initialize as init_mcp
 from .mcp_server import mcp
 from .redis.client import SynapseRedis
@@ -24,13 +20,12 @@ settings = get_settings()
 # Global instances
 synapse_redis: SynapseRedis | None = None
 embedding_cache: EmbeddingCache | None = None
-mcp_discovery: MCPDiscovery | None = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):  # pragma: no cover
     """Manage application lifespan."""
-    global synapse_redis, embedding_cache, mcp_discovery
+    global synapse_redis, embedding_cache
 
     # Startup
     settings = get_settings()
@@ -59,38 +54,10 @@ async def lifespan(app: FastAPI):  # pragma: no cover
     # Initialize MCP server with dependencies
     init_mcp(synapse_redis, embedding_cache)
 
-    # Initialize MCP Discovery
-    mcp_discovery = MCPDiscovery(synapse_redis)
-
-    # Auto-register synapse server
-    server_info = {
-        "name": "synapse",
-        "description": "Synapse AKG Server - Agentic Knowledge Graph",
-        "version": "0.1.0",
-        "capabilities": ["memorize", "recall", "patch", "hybrid-search"],
-        "endpoints": ["/mcp", "/health", "/metrics"],
-        "transport": "MCP-HTTP"
-    }
-    mcp_discovery.register_server("synapse", server_info)
-
-    # Start FastMCP in background task
-    # TODO: Fix FastMCP server startup - run_sse method doesn't exist
-    # Temporarily disabled to allow deployment to proceed
-    # mcp_task = asyncio.create_task(
-    #     mcp.run_sse(host="0.0.0.0", port=8080)  # nosec B104: Intentional binding for MCP server accessibility
-    # )
-    mcp_task = None  # Placeholder until MCP server is fixed
-
     try:
         yield
     finally:
         # Shutdown
-        if mcp_task:
-            mcp_task.cancel()
-            try:
-                await mcp_task
-            except asyncio.CancelledError:  # nosec B110: Expected cancellation, no action needed
-                pass
         if synapse_redis:
             await synapse_redis.close()
 
@@ -102,6 +69,11 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
+
+# Mount FastMCP as ASGI sub-application at /mcp
+# This provides full MCP protocol support:
+#   POST /mcp  → initialize, tools/list, tools/call (JSON-RPC 2.0)
+app.mount("/mcp", mcp.streamable_http_app())
 
 
 @app.get("/health")
@@ -115,7 +87,7 @@ async def health_check():
         test_embedding = embedding_cache.embed("test")
         settings = get_settings()
 
-        health_data = {
+        return {
             "status": "healthy",
             "timestamp": time.time(),
             "embedding_model": settings.embedding_model,
@@ -124,22 +96,14 @@ async def health_check():
                 "redis": "connected",
                 "embedding": "available",
                 "cache_stats": embedding_cache.get_stats() if embedding_cache else None,
+                "mcp": "running",
             },
         }
-
-        # Update MCP discovery health data
-        if mcp_discovery:  # pragma: no cover
-            mcp_discovery.update_health("synapse", health_data)
-
-        return health_data
     except Exception as e:  # pragma: no cover
-        error_data = {"status": "unhealthy", "error": str(e), "timestamp": time.time()}
-
-        # Update MCP discovery health data on error
-        if mcp_discovery:  # pragma: no cover
-            mcp_discovery.update_health("synapse", error_data)
-
-        return JSONResponse(status_code=503, content=error_data)
+        return JSONResponse(
+            status_code=503,
+            content={"status": "unhealthy", "error": str(e), "timestamp": time.time()}
+        )
 
 
 @app.get("/metrics")
@@ -181,121 +145,12 @@ async def metrics_endpoint():
         return JSONResponse(status_code=500, content={"error": str(e)})
 
 
-@app.get("/mcp/servers")
-async def list_mcp_servers():
-    """List all registered MCP servers."""
-    try:
-        servers = mcp_discovery.list_servers()
-        return {
-            "servers": servers,
-            "count": len(servers),
-            "timestamp": time.time()
-        }
-    except Exception as e:  # pragma: no cover
-        return JSONResponse(
-            status_code=500,
-            content={"error": "Failed to list servers", "detail": str(e)}
-        )
-
-
-@app.get("/mcp/server/{server_name}")
-async def get_mcp_server_info(server_name: str):
-    """Get detailed information about a specific MCP server."""
-    try:
-        server_info = mcp_discovery.get_server_info(server_name)
-
-        if not server_info:
-            return JSONResponse(
-                status_code=404,
-                content={"error": f"Server '{server_name}' not found"}
-            )
-
-        return server_info
-    except Exception as e:  # pragma: no cover
-        return JSONResponse(
-            status_code=500,
-            content={"error": "Failed to get server info", "detail": str(e)}
-        )
-
-
-@app.get("/mcp/server/{server_name}/tools")
-async def get_mcp_server_tools(server_name: str):
-    """Get available tools for a specific MCP server."""
-    try:
-        tools = mcp_discovery.get_server_tools(server_name)
-        return {
-            "tools": tools,
-            "count": len(tools),
-            "server": server_name,
-            "timestamp": time.time()
-        }
-    except Exception as e:  # pragma: no cover
-        return JSONResponse(
-            status_code=500,
-            content={"error": "Failed to get server tools", "detail": str(e)}
-        )
-
-
-@app.post("/mcp/server/{server_name}/register")
-async def register_mcp_server(server_name: str, request: Dict[str, Any]):
-    """Register a new MCP server."""
-    try:
-        success = mcp_discovery.register_server(server_name, request)
-
-        if success:
-            return {
-                "status": "registered",
-                "server": server_name,
-                "timestamp": time.time()
-            }
-        else:
-            return JSONResponse(
-                status_code=500,
-                content={"error": "Failed to register server"}
-            )
-    except Exception as e:  # pragma: no cover
-        return JSONResponse(
-            status_code=500,
-            content={"error": "Failed to register server", "detail": str(e)}
-        )
-
-
-@app.post("/mcp/server/{server_name}/health")
-async def update_server_health(server_name: str, health_data: Dict[str, Any]):
-    """Update health status for a specific server."""
-    try:
-        success = mcp_discovery.update_health(server_name, health_data)
-
-        if success:
-            return {
-                "status": "updated",
-                "server": server_name,
-                "timestamp": time.time()
-            }
-        else:
-            return JSONResponse(
-                status_code=500,
-                content={"error": "Failed to update health"}
-            )
-    except Exception as e:  # pragma: no cover
-        return JSONResponse(
-            status_code=500,
-            content={"error": "Failed to update health", "detail": str(e)}
-        )
-
-
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):  # pragma: no cover
     """Global exception handler."""
     return JSONResponse(
         status_code=500, content={"error": "Internal server error", "detail": str(exc)}
     )
-
-
-# For testing purposes
-def create_test_client():
-    """Create test client for the app."""
-    return TestClient(app)
 
 
 if __name__ == "__main__":  # pragma: no cover
