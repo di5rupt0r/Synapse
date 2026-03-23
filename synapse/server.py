@@ -36,7 +36,7 @@ async def lifespan(app: FastAPI):  # pragma: no cover
         redis_url,
         decode_responses=True,
         socket_connect_timeout=5,
-        socket_keepalive=True
+        socket_keepalive=True,
     )
     await redis_client.ping()
 
@@ -102,7 +102,7 @@ async def health_check():
     except Exception as e:  # pragma: no cover
         return JSONResponse(
             status_code=503,
-            content={"status": "unhealthy", "error": str(e), "timestamp": time.time()}
+            content={"status": "unhealthy", "error": str(e), "timestamp": time.time()},
         )
 
 
@@ -146,7 +146,9 @@ async def metrics_endpoint():
 
 
 @app.exception_handler(Exception)
-async def global_exception_handler(request: Request, exc: Exception):  # pragma: no cover
+async def global_exception_handler(
+    request: Request, exc: Exception
+):  # pragma: no cover
     """Global exception handler."""
     return JSONResponse(
         status_code=500, content={"error": "Internal server error", "detail": str(exc)}

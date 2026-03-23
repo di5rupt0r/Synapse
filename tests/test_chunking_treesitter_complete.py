@@ -151,7 +151,9 @@ class TestTreeSitterChunkingComplete:
             with patch("synapse.chunking.treesitter.tree_sitter_python") as mock_python:
                 mock_python.side_effect = ImportError("Python not available")
 
-                with pytest.raises(ImportError, match="Tree-sitter language python not available"):
+                with pytest.raises(
+                    ImportError, match="Tree-sitter language python not available"
+                ):
                     get_parser("python")
 
     def test_extract_chunk_complete(self):
@@ -434,10 +436,10 @@ if True:
         from synapse.chunking import treesitter
 
         # Should have fallback imports
-        assert hasattr(treesitter, 'Language')
-        assert hasattr(treesitter, 'Parser')
-        assert hasattr(treesitter, 'Node')
+        assert hasattr(treesitter, "Language")
+        assert hasattr(treesitter, "Parser")
+        assert hasattr(treesitter, "Node")
 
         # Should have the constants
-        assert hasattr(treesitter, 'EXTENSION_MAP')
-        assert hasattr(treesitter, 'CHUNK_NODE_TYPES')
+        assert hasattr(treesitter, "EXTENSION_MAP")
+        assert hasattr(treesitter, "CHUNK_NODE_TYPES")

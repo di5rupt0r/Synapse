@@ -13,6 +13,7 @@ from fastapi.testclient import TestClient
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture()
 def mock_redis():
     r = MagicMock()
@@ -51,6 +52,7 @@ def client(mock_redis, mock_cache):
 # 1. The /mcp endpoint must exist (not 404)
 # ---------------------------------------------------------------------------
 
+
 class TestMCPEndpointExists:
     """The /mcp endpoint must be reachable — not 404."""
 
@@ -75,8 +77,8 @@ class TestMCPEndpointExists:
             "params": {
                 "protocolVersion": "2025-03-26",
                 "capabilities": {},
-                "clientInfo": {"name": "pytest", "version": "0.1"}
-            }
+                "clientInfo": {"name": "pytest", "version": "0.1"},
+            },
         }
         resp = client.post("/mcp/mcp", json=payload)
         assert resp.status_code != 404, (
@@ -101,8 +103,8 @@ class TestMCPEndpointExists:
             "params": {
                 "protocolVersion": "2025-03-26",
                 "capabilities": {},
-                "clientInfo": {"name": "pytest", "version": "0.1"}
-            }
+                "clientInfo": {"name": "pytest", "version": "0.1"},
+            },
         }
         resp = client.post("/mcp/mcp", json=payload)
         assert resp.status_code != 404
@@ -114,30 +116,35 @@ class TestMCPEndpointExists:
 # 2. tools/list — standard MCP tool discovery (via tool manager, no HTTP)
 # ---------------------------------------------------------------------------
 
+
 class TestMCPToolsList:
     """tools/list must return the 3 registered tools."""
 
     def test_tools_list_returns_memorize(self):
         """RED→GREEN: memorize tool is registered in FastMCP."""
         from synapse.mcp_server import mcp
+
         tools = mcp._tool_manager.list_tools()
         assert "memorize" in {t.name for t in tools}
 
     def test_tools_list_returns_recall(self):
         """RED→GREEN: recall tool is registered in FastMCP."""
         from synapse.mcp_server import mcp
+
         tools = mcp._tool_manager.list_tools()
         assert "recall" in {t.name for t in tools}
 
     def test_tools_list_returns_patch(self):
         """RED→GREEN: patch tool is registered in FastMCP."""
         from synapse.mcp_server import mcp
+
         tools = mcp._tool_manager.list_tools()
         assert "patch" in {t.name for t in tools}
 
     def test_exactly_three_tools_registered(self):
         """RED→GREEN: exactly 3 tools registered — no accidental extras."""
         from synapse.mcp_server import mcp
+
         tools = mcp._tool_manager.list_tools()
         assert len(tools) == 3, (
             f"Expected 3 tools, got {len(tools)}: {[t.name for t in tools]}"
@@ -148,12 +155,14 @@ class TestMCPToolsList:
 # 3. FastMCP ASGI app is mountable
 # ---------------------------------------------------------------------------
 
+
 class TestFastMCPASGIMount:
     """FastMCP must expose an ASGI app object for mounting."""
 
     def test_mcp_has_streamable_http_app(self):
         """RED→GREEN: mcp.streamable_http_app() returns an ASGI callable."""
         from synapse.mcp_server import mcp
+
         asgi_app = mcp.streamable_http_app()
         assert callable(asgi_app), (
             "streamable_http_app() must return a callable ASGI app"
@@ -162,11 +171,13 @@ class TestFastMCPASGIMount:
     def test_mcp_server_name_is_synapse(self):
         """GREEN: FastMCP server name is 'synapse'."""
         from synapse.mcp_server import mcp
+
         assert mcp.name == "synapse"
 
     def test_server_app_mounts_mcp_at_slash_mcp(self):
         """RED→GREEN: FastAPI app has a route mounted at /mcp."""
         import synapse.server as server_mod
+
         routes = server_mod.app.routes
         mount_paths = []
         for route in routes:

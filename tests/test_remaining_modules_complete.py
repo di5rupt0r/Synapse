@@ -233,8 +233,18 @@ class TestGraphCompressorComplete:
         from synapse.graph.compressor import compress_graph
 
         nodes = [
-            {"id": "1", "type": "entity", "content": "test1", "links": {"outbound": ["2"]}},
-            {"id": "2", "type": "entity", "content": "test2", "links": {"inbound": ["1"]}}
+            {
+                "id": "1",
+                "type": "entity",
+                "content": "test1",
+                "links": {"outbound": ["2"]},
+            },
+            {
+                "id": "2",
+                "type": "entity",
+                "content": "test2",
+                "links": {"inbound": ["1"]},
+            },
         ]
 
         result = compress_graph(nodes)
@@ -248,7 +258,7 @@ class TestGraphCompressorComplete:
 
         nodes = [
             {"id": "1", "type": "entity", "content": "duplicate"},
-            {"id": "2", "type": "entity", "content": "duplicate"}
+            {"id": "2", "type": "entity", "content": "duplicate"},
         ]
 
         result = compress_graph(nodes)
@@ -269,7 +279,13 @@ class TestGraphCompressorComplete:
         from synapse.graph.compressor import decompress_graph
 
         compressed = [
-            {"id": "1", "type": "entity", "content": "test", "compressed": True, "original_ids": ["1", "2"]}
+            {
+                "id": "1",
+                "type": "entity",
+                "content": "test",
+                "compressed": True,
+                "original_ids": ["1", "2"],
+            }
         ]
 
         result = decompress_graph(compressed)
@@ -324,7 +340,7 @@ class TestGraphResolverComplete:
         nodes = {
             "1": {"id": "1", "type": "entity", "links": {"outbound": ["2"]}},
             "2": {"id": "2", "type": "entity", "links": {"outbound": ["3"]}},
-            "3": {"id": "3", "type": "entity"}
+            "3": {"id": "3", "type": "entity"},
         }
 
         result = resolve_path("1", "3", nodes)
@@ -337,10 +353,7 @@ class TestGraphResolverComplete:
         """Test resolving path when no path exists."""
         from synapse.graph.resolver import resolve_path
 
-        nodes = {
-            "1": {"id": "1", "type": "entity"},
-            "2": {"id": "2", "type": "entity"}
-        }
+        nodes = {"1": {"id": "1", "type": "entity"}, "2": {"id": "2", "type": "entity"}}
 
         result = resolve_path("1", "2", nodes)
 
@@ -352,7 +365,7 @@ class TestGraphResolverComplete:
 
         nodes = {
             "1": {"id": "1", "type": "entity", "links": {"outbound": ["2"]}},
-            "2": {"id": "2", "type": "entity", "links": {"outbound": ["1"]}}
+            "2": {"id": "2", "type": "entity", "links": {"outbound": ["1"]}},
         }
 
         result = resolve_path("1", "2", nodes)
@@ -369,7 +382,7 @@ class TestGraphResolverComplete:
             "1": {"id": "1", "type": "entity", "links": {"outbound": ["2"]}},
             "2": {"id": "2", "type": "entity"},
             "3": {"id": "3", "type": "entity"},
-            "4": {"id": "4", "type": "entity", "links": {"outbound": ["3"]}}
+            "4": {"id": "4", "type": "entity", "links": {"outbound": ["3"]}},
         }
 
         result = get_connected_components(nodes)
@@ -385,7 +398,7 @@ class TestGraphResolverComplete:
             "1": {"id": "1", "type": "entity", "links": {"outbound": ["2", "3"]}},
             "2": {"id": "2", "type": "entity", "links": {"outbound": ["4"]}},
             "3": {"id": "3", "type": "entity", "links": {"outbound": ["4"]}},
-            "4": {"id": "4", "type": "entity"}
+            "4": {"id": "4", "type": "entity"},
         }
 
         result = find_shortest_path("1", "4", nodes)

@@ -1,7 +1,6 @@
 """Tests for Tree-sitter Chunking."""
 
 
-
 def test_extension_mapping():
     """Test file extension to language mapping."""
     from synapse.chunking.treesitter import EXTENSION_MAP

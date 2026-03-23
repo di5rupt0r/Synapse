@@ -47,11 +47,13 @@ def test_server_metrics_endpoint():
         patch("synapse.server.embedding_cache") as mock_cache,
     ):
         mock_client = Mock()
-        mock_client.info = AsyncMock(return_value={
-            "connected_clients": 1,
-            "used_memory_human": "10M",
-            "total_commands_processed": 100
-        })
+        mock_client.info = AsyncMock(
+            return_value={
+                "connected_clients": 1,
+                "used_memory_human": "10M",
+                "total_commands_processed": 100,
+            }
+        )
         mock_redis._client = mock_client
         mock_cache.get_stats.return_value = {"hits": 5, "misses": 1}
 

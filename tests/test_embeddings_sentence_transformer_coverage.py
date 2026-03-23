@@ -40,15 +40,22 @@ class TestSentenceTransformerBackend:
         mock_sentence_transformer.assert_called_once_with("custom-model")
 
     @patch("synapse.embeddings.sentence_transformer.SentenceTransformer")
-    def test_initialization_dimension_validation_failure(self, mock_sentence_transformer):
+    def test_initialization_dimension_validation_failure(
+        self, mock_sentence_transformer
+    ):
         """Test initialization fails when dimension doesn't match ADR-001."""
         mock_model = Mock()
-        mock_model.get_sentence_embedding_dimension.return_value = 512  # Wrong dimension
+        mock_model.get_sentence_embedding_dimension.return_value = (
+            512  # Wrong dimension
+        )
         mock_sentence_transformer.return_value = mock_model
 
         from synapse.embeddings.sentence_transformer import SentenceTransformerBackend
 
-        with pytest.raises(ValueError, match="Model dimension 512 does not match ADR-001 requirement of 768"):
+        with pytest.raises(
+            ValueError,
+            match="Model dimension 512 does not match ADR-001 requirement of 768",
+        ):
             SentenceTransformerBackend()
 
     @patch("synapse.embeddings.sentence_transformer.SentenceTransformer")
@@ -63,7 +70,7 @@ class TestSentenceTransformerBackend:
         backend = SentenceTransformerBackend()
 
         # Mock the validation to avoid error
-        with patch.object(backend, '_validate_dimension'):
+        with patch.object(backend, "_validate_dimension"):
             backend._validate_dimension()
 
         dimension = backend._get_dimension()
@@ -85,7 +92,7 @@ class TestSentenceTransformerBackend:
         backend = SentenceTransformerBackend()
 
         # Mock validation
-        with patch.object(backend, '_validate_dimension'):
+        with patch.object(backend, "_validate_dimension"):
             backend._validate_dimension()
 
         result = backend.embed("test text")
@@ -111,7 +118,7 @@ class TestSentenceTransformerBackend:
         backend = SentenceTransformerBackend()
 
         # Mock validation
-        with patch.object(backend, '_validate_dimension'):
+        with patch.object(backend, "_validate_dimension"):
             backend._validate_dimension()
 
         result = backend.embed("test text")
@@ -136,7 +143,7 @@ class TestSentenceTransformerBackend:
         backend = SentenceTransformerBackend()
 
         # Mock validation
-        with patch.object(backend, '_validate_dimension'):
+        with patch.object(backend, "_validate_dimension"):
             backend._validate_dimension()
 
         result = backend.embed_batch(["text1", "text2"])
@@ -147,7 +154,9 @@ class TestSentenceTransformerBackend:
         assert all(len(emb) == 768 for emb in result)
         assert result[0][0] == 0.1
         assert result[1][0] == 0.2
-        mock_model.encode.assert_called_once_with(["text1", "text2"], convert_to_numpy=True)
+        mock_model.encode.assert_called_once_with(
+            ["text1", "text2"], convert_to_numpy=True
+        )
 
     @patch("synapse.embeddings.sentence_transformer.SentenceTransformer")
     def test_embed_batch_lists_return(self, mock_sentence_transformer):
@@ -165,7 +174,7 @@ class TestSentenceTransformerBackend:
         backend = SentenceTransformerBackend()
 
         # Mock validation
-        with patch.object(backend, '_validate_dimension'):
+        with patch.object(backend, "_validate_dimension"):
             backend._validate_dimension()
 
         result = backend.embed_batch(["text1", "text2"])
@@ -191,7 +200,7 @@ class TestSentenceTransformerBackend:
         backend = SentenceTransformerBackend()
 
         # Mock validation
-        with patch.object(backend, '_validate_dimension'):
+        with patch.object(backend, "_validate_dimension"):
             backend._validate_dimension()
 
         result = backend.embed_batch(["text1"])
@@ -226,7 +235,10 @@ class TestSentenceTransformerBackend:
 
         backend = SentenceTransformerBackend()
 
-        with pytest.raises(ValueError, match="Model dimension 512 does not match ADR-001 requirement of 768"):
+        with pytest.raises(
+            ValueError,
+            match="Model dimension 512 does not match ADR-001 requirement of 768",
+        ):
             backend._validate_dimension()
 
     @patch("synapse.embeddings.sentence_transformer.SentenceTransformer")
@@ -242,13 +254,13 @@ class TestSentenceTransformerBackend:
         backend = SentenceTransformerBackend()
 
         # Mock validation
-        with patch.object(backend, '_validate_dimension'):
+        with patch.object(backend, "_validate_dimension"):
             backend._validate_dimension()
 
         assert isinstance(backend, EmbeddingBackend)
-        assert hasattr(backend, 'embed')
-        assert hasattr(backend, 'embed_batch')
-        assert hasattr(backend, 'dimension')
+        assert hasattr(backend, "embed")
+        assert hasattr(backend, "embed_batch")
+        assert hasattr(backend, "dimension")
 
     @patch("synapse.embeddings.sentence_transformer.SentenceTransformer")
     def test_embed_empty_text(self, mock_sentence_transformer):
@@ -265,7 +277,7 @@ class TestSentenceTransformerBackend:
         backend = SentenceTransformerBackend()
 
         # Mock validation
-        with patch.object(backend, '_validate_dimension'):
+        with patch.object(backend, "_validate_dimension"):
             backend._validate_dimension()
 
         result = backend.embed("")
@@ -289,7 +301,7 @@ class TestSentenceTransformerBackend:
         backend = SentenceTransformerBackend()
 
         # Mock validation
-        with patch.object(backend, '_validate_dimension'):
+        with patch.object(backend, "_validate_dimension"):
             backend._validate_dimension()
 
         result = backend.embed_batch([])
