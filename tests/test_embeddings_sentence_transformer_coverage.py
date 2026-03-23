@@ -13,7 +13,7 @@ class TestSentenceTransformerBackend:
     def test_initialization_default_model(self, mock_sentence_transformer):
         """Test initialization with default model."""
         mock_model = Mock()
-        mock_model.get_sentence_embedding_dimension.return_value = 384
+        mock_model.get_sentence_embedding_dimension.return_value = 768
         mock_sentence_transformer.return_value = mock_model
 
         from synapse.embeddings.sentence_transformer import SentenceTransformerBackend
@@ -21,7 +21,7 @@ class TestSentenceTransformerBackend:
         backend = SentenceTransformerBackend()
 
         assert backend.model_name == "all-MiniLM-L6-v2"
-        assert backend.dimension == 384
+        assert backend.dimension == 768
         mock_sentence_transformer.assert_called_once_with("all-MiniLM-L6-v2")
 
     @patch("synapse.embeddings.sentence_transformer.SentenceTransformer")
@@ -191,8 +191,8 @@ class TestSentenceTransformerBackend:
         mock_model.get_sentence_embedding_dimension.return_value = 768
         mock_sentence_transformer.return_value = mock_model
 
-        # Mock single embedding return (edge case)
-        mock_embeddings = [0.1] * 768
+        # Mock single embedding return as a single numpy array representing one vector
+        mock_embeddings = np.array([0.1] * 768)
         mock_model.encode.return_value = mock_embeddings
 
         from synapse.embeddings.sentence_transformer import SentenceTransformerBackend
@@ -233,13 +233,11 @@ class TestSentenceTransformerBackend:
 
         from synapse.embeddings.sentence_transformer import SentenceTransformerBackend
 
-        backend = SentenceTransformerBackend()
-
         with pytest.raises(
             ValueError,
             match="Model dimension 512 does not match ADR-001 requirement of 768",
         ):
-            backend._validate_dimension()
+            backend = SentenceTransformerBackend()
 
     @patch("synapse.embeddings.sentence_transformer.SentenceTransformer")
     def test_inheritance_from_embedding_backend(self, mock_sentence_transformer):
