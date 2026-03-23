@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 @pytest.fixture()
 def client():
     from synapse.server import app
+
     return TestClient(app)
 
 
@@ -61,17 +62,21 @@ class TestServerMetrics:
             patch("synapse.server.embedding_cache") as mock_cache,
         ):
             mock_client = Mock()
-            mock_client.info = AsyncMock(return_value={
-                "connected_clients": 2,
-                "used_memory_human": "5M",
-                "total_commands_processed": 50,
-            })
-            mock_client.ft.return_value.info = AsyncMock(return_value={
-                "num_docs": 10,
-                "max_doc_id": 10,
-                "num_terms": 100,
-                "num_records": 100,
-            })
+            mock_client.info = AsyncMock(
+                return_value={
+                    "connected_clients": 2,
+                    "used_memory_human": "5M",
+                    "total_commands_processed": 50,
+                }
+            )
+            mock_client.ft.return_value.info = AsyncMock(
+                return_value={
+                    "num_docs": 10,
+                    "max_doc_id": 10,
+                    "num_terms": 100,
+                    "num_records": 100,
+                }
+            )
             mock_redis._client = mock_client
             mock_cache.get_stats.return_value = {}
 
@@ -88,13 +93,17 @@ class TestServerMCPMount:
     def test_mcp_mount_in_routes(self):
         """FastMCP is mounted at /mcp in the app route table."""
         from synapse.server import app
+
         paths = [getattr(r, "path", "") for r in app.routes]
         assert "/mcp" in paths, f"/mcp mount not found. Routes: {paths}"
 
     def test_no_mcp_discovery_routes(self):
         """Non-standard /mcp/servers route does not exist as a direct route."""
         from synapse.server import app
+
         # Only top-level routes — sub-app routes don't appear here
         direct_paths = [getattr(r, "path", "") for r in app.routes]
         # /mcp/servers was a direct FastAPI route; it should be gone
-        assert "/mcp/servers" not in direct_paths, "Old MCPDiscovery route still registered"
+        assert "/mcp/servers" not in direct_paths, (
+            "Old MCPDiscovery route still registered"
+        )

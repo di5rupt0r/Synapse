@@ -11,6 +11,7 @@ class TestMCPInitialization:
     def test_mcp_server_created(self):
         """GREEN: FastMCP server is created with correct name."""
         from synapse.mcp_server import mcp
+
         assert mcp is not None
         assert mcp.name == "synapse"
 
@@ -35,6 +36,7 @@ class TestMCPToolsRegistration:
     def test_memorize_tool_registered(self):
         """GREEN: memorize tool is registered."""
         from synapse.mcp_server import mcp
+
         tools = mcp._tool_manager.list_tools()
         tool_names = [t.name for t in tools]
         assert "memorize" in tool_names
@@ -42,6 +44,7 @@ class TestMCPToolsRegistration:
     def test_recall_tool_registered(self):
         """GREEN: recall tool is registered."""
         from synapse.mcp_server import mcp
+
         tools = mcp._tool_manager.list_tools()
         tool_names = [t.name for t in tools]
         assert "recall" in tool_names
@@ -49,6 +52,7 @@ class TestMCPToolsRegistration:
     def test_patch_tool_registered(self):
         """GREEN: patch tool is registered."""
         from synapse.mcp_server import mcp
+
         tools = mcp._tool_manager.list_tools()
         tool_names = [t.name for t in tools]
         assert "patch" in tool_names
@@ -70,9 +74,7 @@ class TestMCPToolInvocation:
         mcp_mod.initialize(mock_redis, mock_cache)
 
         result = await mcp_mod.memorize(
-            domain="test",
-            type="entity",
-            content="test content"
+            domain="test", type="entity", content="test content"
         )
 
         assert result["status"] == "success"
@@ -90,10 +92,7 @@ class TestMCPToolInvocation:
 
         mcp_mod.initialize(mock_redis, mock_cache)
 
-        result = await mcp_mod.recall(
-            query="test query",
-            limit=5
-        )
+        result = await mcp_mod.recall(query="test query", limit=5)
 
         assert "results" in result
         assert "total" in result
@@ -111,7 +110,7 @@ class TestMCPToolInvocation:
 
         result = await mcp_mod.patch(
             node_id="node:test:123",
-            operations=[{"op": "set", "path": "$.metadata.foo", "value": "bar"}]
+            operations=[{"op": "set", "path": "$.metadata.foo", "value": "bar"}],
         )
 
         assert result["status"] == "success"

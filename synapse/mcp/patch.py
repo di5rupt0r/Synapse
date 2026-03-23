@@ -38,7 +38,11 @@ class MCPPatch:
             if success:
                 return {"status": "success", "node_id": node_id, "updated": True}
             else:
-                return {"status": "error", "node_id": node_id, "error": "Failed to apply operations"}
+                return {
+                    "status": "error",
+                    "node_id": node_id,
+                    "error": "Failed to apply operations",
+                }
 
         except Exception as e:
             return {"status": "error", "error": str(e)}

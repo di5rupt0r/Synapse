@@ -14,7 +14,7 @@ settings = get_settings()
 # Create FastMCP server
 mcp = FastMCP(
     name="synapse",
-    instructions="Synapse AKG Server - Agentic Knowledge Graph with Hybrid Search"
+    instructions="Synapse AKG Server - Agentic Knowledge Graph with Hybrid Search",
 )
 
 # Global instances (initialized in app lifespan)
@@ -28,7 +28,7 @@ async def memorize(
     type: str,
     content: str,
     metadata: dict | None = None,
-    links: dict | None = None
+    links: dict | None = None,
 ) -> dict:
     """
     Store a node in the knowledge graph.
@@ -47,13 +47,15 @@ async def memorize(
         raise RuntimeError("MCP server not initialized")
 
     handler = MCPMemorize(synapse_redis, embedding_cache)
-    return handler.handle_memorize({
-        "domain": domain,
-        "type": type,
-        "content": content,
-        "metadata": metadata or {},
-        "links": links or {"inbound": [], "outbound": []}
-    })
+    return handler.handle_memorize(
+        {
+            "domain": domain,
+            "type": type,
+            "content": content,
+            "metadata": metadata or {},
+            "links": links or {"inbound": [], "outbound": []},
+        }
+    )
 
 
 @mcp.tool()
@@ -62,7 +64,7 @@ async def recall(
     domain: list[str] | None = None,
     type: list[str] | None = None,
     limit: int = 10,
-    include_embedding: bool = False
+    include_embedding: bool = False,
 ) -> dict:
     """
     Hybrid search across the knowledge graph.
@@ -81,20 +83,19 @@ async def recall(
         raise RuntimeError("MCP server not initialized")
 
     handler = MCPRecall(synapse_redis, embedding_cache)
-    return handler.handle_recall({
-        "query": query,
-        "domain_filter": domain,
-        "type_filter": type,
-        "limit": limit,
-        "include_embedding": include_embedding
-    })
+    return handler.handle_recall(
+        {
+            "query": query,
+            "domain_filter": domain,
+            "type_filter": type,
+            "limit": limit,
+            "include_embedding": include_embedding,
+        }
+    )
 
 
 @mcp.tool()
-async def patch(
-    node_id: str,
-    operations: list[dict]
-) -> dict:
+async def patch(node_id: str, operations: list[dict]) -> dict:
     """
     Apply JSON Patch operations to update a node.
 
@@ -109,10 +110,7 @@ async def patch(
         raise RuntimeError("MCP server not initialized")
 
     handler = MCPPatch(synapse_redis)
-    return handler.handle_patch({
-        "node_id": node_id,
-        "operations": operations
-    })
+    return handler.handle_patch({"node_id": node_id, "operations": operations})
 
 
 def initialize(redis_client: SynapseRedis, cache: EmbeddingCache) -> None:

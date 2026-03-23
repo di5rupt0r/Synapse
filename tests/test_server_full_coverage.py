@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 @pytest.fixture()
 def client():
     from synapse.server import app
+
     return TestClient(app)
 
 
@@ -40,17 +41,21 @@ class TestServerCompleteCoverage:
             patch("synapse.server.embedding_cache") as mock_cache,
         ):
             mock_client = Mock()
-            mock_client.info = AsyncMock(return_value={
-                "connected_clients": 1,
-                "used_memory_human": "1M",
-                "total_commands_processed": 10,
-            })
-            mock_client.ft.return_value.info = AsyncMock(return_value={
-                "num_docs": 5,
-                "max_doc_id": 5,
-                "num_terms": 50,
-                "num_records": 50,
-            })
+            mock_client.info = AsyncMock(
+                return_value={
+                    "connected_clients": 1,
+                    "used_memory_human": "1M",
+                    "total_commands_processed": 10,
+                }
+            )
+            mock_client.ft.return_value.info = AsyncMock(
+                return_value={
+                    "num_docs": 5,
+                    "max_doc_id": 5,
+                    "num_terms": 50,
+                    "num_records": 50,
+                }
+            )
             mock_redis._client = mock_client
             mock_cache.get_stats.return_value = {"hits": 1, "misses": 0}
 
@@ -74,12 +79,14 @@ class TestServerCompleteCoverage:
     def test_mcp_mounted_on_app(self):
         """FastMCP is mounted as a sub-application at /mcp."""
         from synapse.server import app
+
         paths = [getattr(r, "path", "") for r in app.routes]
         assert "/mcp" in paths
 
     def test_global_exception_handler_registered(self):
         """Global exception handler is registered on app."""
         from synapse.server import app
+
         # FastAPI stores exception handlers in exception_handlers dict
         # We check that there's at least a global handler (Exception key)
         assert app.exception_handlers or app.exception_handlers is not None

@@ -16,6 +16,7 @@ from fastapi.testclient import TestClient
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture()
 def mock_redis():
     r = MagicMock()
@@ -54,6 +55,7 @@ def client(mock_redis, mock_cache):
 # ---------------------------------------------------------------------------
 # 1. Non-standard discovery routes must be gone
 # ---------------------------------------------------------------------------
+
 
 class TestNonStandardDiscoveryRoutesRemoved:
     """Non-standard /mcp/server/* routes must NOT return 200 after refactor."""
@@ -98,6 +100,7 @@ class TestNonStandardDiscoveryRoutesRemoved:
 # 2. Static source-code checks (no import of dead modules)
 # ---------------------------------------------------------------------------
 
+
 class TestMCPDiscoveryModuleRemoved:
     """Dead module references must not exist in source after cleanup."""
 
@@ -128,7 +131,9 @@ class TestMCPDiscoveryModuleRemoved:
             "/home/gabrielsb/Synapse/synapse/mcp/__init__.py"
         ).read_text()
         assert "MCPBase" not in init_src, "mcp/__init__.py still imports MCPBase"
-        assert "from .base" not in init_src, "mcp/__init__.py still references base module"
+        assert "from .base" not in init_src, (
+            "mcp/__init__.py still references base module"
+        )
 
     def test_mcp_discovery_file_deleted(self):
         """RED→GREEN: synapse/mcp_discovery.py must not exist."""

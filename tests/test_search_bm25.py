@@ -7,7 +7,9 @@ import pytest
 from synapse.schema.node import Chunk
 
 
-def make_chunk(chunk_id: str, text: str, language: str = "python", node_type: str = "function") -> Chunk:
+def make_chunk(
+    chunk_id: str, text: str, language: str = "python", node_type: str = "function"
+) -> Chunk:
     """Helper to create a valid Chunk."""
     return Chunk(
         id=chunk_id,
@@ -16,7 +18,7 @@ def make_chunk(chunk_id: str, text: str, language: str = "python", node_type: st
         node_type=node_type,
         line_start=1,
         line_end=2,
-        embedding=[0.1] * 768
+        embedding=[0.1] * 768,
     )
 
 
@@ -26,9 +28,10 @@ class TestBM25Index:
     def test_init(self):
         """Test initialization."""
         from synapse.search.bm25 import BM25Index
+
         chunks = [
             make_chunk(f"chunk:{uuid.uuid4()}", "hello world"),
-            make_chunk(f"chunk:{uuid.uuid4()}", "foo bar")
+            make_chunk(f"chunk:{uuid.uuid4()}", "foo bar"),
         ]
         index = BM25Index(chunks)
         assert index.chunks == chunks
@@ -37,6 +40,7 @@ class TestBM25Index:
     def test_tokenize_basic(self):
         """Test tokenize with basic text."""
         from synapse.search.bm25 import BM25Index
+
         chunks = [make_chunk(f"chunk:{uuid.uuid4()}", "test")]
         index = BM25Index(chunks)
         tokens = index._tokenize("hello world")
@@ -46,6 +50,7 @@ class TestBM25Index:
     def test_tokenize_snake_case(self):
         """Test tokenize with snake_case."""
         from synapse.search.bm25 import BM25Index
+
         chunks = [make_chunk(f"chunk:{uuid.uuid4()}", "test")]
         index = BM25Index(chunks)
         tokens = index._tokenize("hello_world_test")
@@ -55,6 +60,7 @@ class TestBM25Index:
     def test_tokenize_camel_case(self):
         """Test tokenize with camelCase."""
         from synapse.search.bm25 import BM25Index
+
         chunks = [make_chunk(f"chunk:{uuid.uuid4()}", "test")]
         index = BM25Index(chunks)
         tokens = index._tokenize("helloWorldTest")
@@ -64,6 +70,7 @@ class TestBM25Index:
     def test_tokenize_filters_short_tokens(self):
         """Test tokenize filters tokens < 2 chars."""
         from synapse.search.bm25 import BM25Index
+
         chunks = [make_chunk(f"chunk:{uuid.uuid4()}", "test")]
         index = BM25Index(chunks)
         tokens = index._tokenize("a bb ccc")
@@ -73,6 +80,7 @@ class TestBM25Index:
     def test_search_basic(self):
         """Test search with basic query."""
         from synapse.search.bm25 import BM25Index
+
         chunk_id = f"chunk:{uuid.uuid4()}"
         chunks = [make_chunk(chunk_id, "hello world function test")]
         index = BM25Index(chunks)
@@ -82,6 +90,7 @@ class TestBM25Index:
     def test_search_empty_query(self):
         """Test search with empty query."""
         from synapse.search.bm25 import BM25Index
+
         chunks = [make_chunk(f"chunk:{uuid.uuid4()}", "test")]
         index = BM25Index(chunks)
         results = index.search("")
@@ -90,6 +99,7 @@ class TestBM25Index:
     def test_search_whitespace_query(self):
         """Test search with whitespace-only query."""
         from synapse.search.bm25 import BM25Index
+
         chunks = [make_chunk(f"chunk:{uuid.uuid4()}", "test")]
         index = BM25Index(chunks)
         results = index.search("   ")
@@ -98,6 +108,7 @@ class TestBM25Index:
     def test_search_no_match(self):
         """Test search with no matching tokens."""
         from synapse.search.bm25 import BM25Index
+
         chunks = [make_chunk(f"chunk:{uuid.uuid4()}", "hello world")]
         index = BM25Index(chunks)
         # Search for terms that don't exist
@@ -107,7 +118,10 @@ class TestBM25Index:
     def test_search_top_k_limit(self):
         """Test search respects top_k limit."""
         from synapse.search.bm25 import BM25Index
-        chunks = [make_chunk(f"chunk:{uuid.uuid4()}", f"test content {i}") for i in range(5)]
+
+        chunks = [
+            make_chunk(f"chunk:{uuid.uuid4()}", f"test content {i}") for i in range(5)
+        ]
         index = BM25Index(chunks)
         results = index.search("test", top_k=3)
         assert len(results) <= 3
@@ -115,6 +129,7 @@ class TestBM25Index:
     def test_get_chunk_by_id(self):
         """Test get_chunk_by_id."""
         from synapse.search.bm25 import BM25Index
+
         chunk_id = f"chunk:{uuid.uuid4()}"
         chunks = [make_chunk(chunk_id, "hello")]
         index = BM25Index(chunks)
@@ -124,6 +139,7 @@ class TestBM25Index:
     def test_get_chunk_by_id_not_found(self):
         """Test get_chunk_by_id not found raises error."""
         from synapse.search.bm25 import BM25Index
+
         chunks = [make_chunk(f"chunk:{uuid.uuid4()}", "test")]
         index = BM25Index(chunks)
         with pytest.raises(ValueError, match="not found"):
@@ -132,6 +148,7 @@ class TestBM25Index:
     def test_update_index(self):
         """Test update_index."""
         from synapse.search.bm25 import BM25Index
+
         chunk1_id = f"chunk:{uuid.uuid4()}"
         chunks = [make_chunk(chunk1_id, "hello")]
         index = BM25Index(chunks)
@@ -143,11 +160,12 @@ class TestBM25Index:
     def test_get_stats(self):
         """Test get_stats."""
         from synapse.search.bm25 import BM25Index
+
         chunk1_id = f"chunk:{uuid.uuid4()}"
         chunk2_id = f"chunk:{uuid.uuid4()}"
         chunks = [
             make_chunk(chunk1_id, "hello world", "python", "function"),
-            make_chunk(chunk2_id, "foo bar", "javascript", "class")
+            make_chunk(chunk2_id, "foo bar", "javascript", "class"),
         ]
         index = BM25Index(chunks)
         stats = index.get_stats()

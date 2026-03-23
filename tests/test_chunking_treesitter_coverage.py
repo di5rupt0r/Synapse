@@ -129,7 +129,9 @@ class TestTreeSitterChunking:
             with patch("synapse.chunking.treesitter.tree_sitter_python") as mock_python:
                 mock_python.side_effect = ImportError("Python not available")
 
-                with pytest.raises(ImportError, match="Tree-sitter language unknown_lang not available"):
+                with pytest.raises(
+                    ImportError, match="Tree-sitter language unknown_lang not available"
+                ):
                     get_parser("unknown_lang")
 
     def test_get_parser_success(self):

@@ -20,6 +20,7 @@ class TestMCPServerInitialization:
         # Clear globals first
         import synapse.mcp_server
         from synapse.mcp_server import initialize
+
         synapse.mcp_server.synapse_redis = None
         synapse.mcp_server.embedding_cache = None
 
@@ -47,7 +48,10 @@ class TestMCPToolsRegistration:
         ):
             mock_handler_instance = Mock()
             mock_handler.return_value = mock_handler_instance
-            mock_handler_instance.handle_memorize.return_value = {"id": "test", "status": "success"}
+            mock_handler_instance.handle_memorize.return_value = {
+                "id": "test",
+                "status": "success",
+            }
 
             result = await memorize("test_domain", "test_type", "test_content")
 
@@ -66,7 +70,10 @@ class TestMCPToolsRegistration:
         ):
             mock_handler_instance = Mock()
             mock_handler.return_value = mock_handler_instance
-            mock_handler_instance.handle_recall.return_value = {"results": [], "total": 0}
+            mock_handler_instance.handle_recall.return_value = {
+                "results": [],
+                "total": 0,
+            }
 
             result = await recall("test query")
 
@@ -86,7 +93,9 @@ class TestMCPToolsRegistration:
             mock_handler.return_value = mock_handler_instance
             mock_handler_instance.handle_patch.return_value = {"status": "success"}
 
-            result = await patch_tool("test_id", [{"op": "set", "path": "$.field", "value": "test"}])
+            result = await patch_tool(
+                "test_id", [{"op": "set", "path": "$.field", "value": "test"}]
+            )
 
             assert result["status"] == "success"
             mock_handler_instance.handle_patch.assert_called_once()
@@ -107,14 +116,17 @@ class TestMCPToolInvocation:
         ):
             mock_handler_instance = Mock()
             mock_handler.return_value = mock_handler_instance
-            mock_handler_instance.handle_memorize.return_value = {"id": "test", "status": "success"}
+            mock_handler_instance.handle_memorize.return_value = {
+                "id": "test",
+                "status": "success",
+            }
 
             await memorize(
                 domain="github",
                 type="entity",
                 content="test content",
                 metadata={"key": "value"},
-                links={"inbound": ["id1"], "outbound": ["id2"]}
+                links={"inbound": ["id1"], "outbound": ["id2"]},
             )
 
             expected_params = {
@@ -122,9 +134,11 @@ class TestMCPToolInvocation:
                 "type": "entity",
                 "content": "test content",
                 "metadata": {"key": "value"},
-                "links": {"inbound": ["id1"], "outbound": ["id2"]}
+                "links": {"inbound": ["id1"], "outbound": ["id2"]},
             }
-            mock_handler_instance.handle_memorize.assert_called_once_with(expected_params)
+            mock_handler_instance.handle_memorize.assert_called_once_with(
+                expected_params
+            )
 
     @pytest.mark.asyncio
     async def test_recall_tool_calls_handler(self):
@@ -138,14 +152,17 @@ class TestMCPToolInvocation:
         ):
             mock_handler_instance = Mock()
             mock_handler.return_value = mock_handler_instance
-            mock_handler_instance.handle_recall.return_value = {"results": [], "total": 0}
+            mock_handler_instance.handle_recall.return_value = {
+                "results": [],
+                "total": 0,
+            }
 
             await recall(
                 query="test query",
                 domain=["github", "docs"],
                 type=["entity", "chunk"],
                 limit=5,
-                include_embedding=True
+                include_embedding=True,
             )
 
             expected_params = {
@@ -153,7 +170,7 @@ class TestMCPToolInvocation:
                 "domain_filter": ["github", "docs"],
                 "type_filter": ["entity", "chunk"],
                 "limit": 5,
-                "include_embedding": True
+                "include_embedding": True,
             }
             mock_handler_instance.handle_recall.assert_called_once_with(expected_params)
 
@@ -172,15 +189,12 @@ class TestMCPToolInvocation:
 
             operations = [
                 {"op": "set", "path": "$.field", "value": "new_value"},
-                {"op": "delete", "path": "$.old_field"}
+                {"op": "delete", "path": "$.old_field"},
             ]
 
             await patch_tool("test_node_id", operations)
 
-            expected_params = {
-                "node_id": "test_node_id",
-                "operations": operations
-            }
+            expected_params = {"node_id": "test_node_id", "operations": operations}
             mock_handler_instance.handle_patch.assert_called_once_with(expected_params)
 
 
@@ -193,6 +207,7 @@ class TestMCPErrorHandling:
         # Clear globals
         import synapse.mcp_server
         from synapse.mcp_server import memorize
+
         synapse.mcp_server.synapse_redis = None
         synapse.mcp_server.embedding_cache = None
 
@@ -205,6 +220,7 @@ class TestMCPErrorHandling:
         # Clear globals
         import synapse.mcp_server
         from synapse.mcp_server import recall
+
         synapse.mcp_server.synapse_redis = None
 
         with pytest.raises(RuntimeError, match="MCP server not initialized"):
@@ -216,6 +232,7 @@ class TestMCPErrorHandling:
         # Clear globals
         import synapse.mcp_server
         from synapse.mcp_server import patch as patch_tool
+
         synapse.mcp_server.synapse_redis = None
 
         with pytest.raises(RuntimeError, match="MCP server not initialized"):
@@ -235,6 +252,7 @@ class TestMCPServerConfiguration:
         """Test global variables start as None."""
         # Clear globals first
         import synapse.mcp_server
+
         synapse.mcp_server.synapse_redis = None
         synapse.mcp_server.embedding_cache = None
 

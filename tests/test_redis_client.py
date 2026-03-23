@@ -9,6 +9,7 @@ class TestSynapseRedis:
     def test_init(self):
         """Test initialization."""
         from synapse.redis.client import SynapseRedis
+
         mock_client = Mock()
         redis = SynapseRedis(mock_client)
         assert redis._client == mock_client
@@ -16,6 +17,7 @@ class TestSynapseRedis:
     def test_ping(self):
         """Test ping."""
         from synapse.redis.client import SynapseRedis
+
         mock_client = Mock()
         mock_client.ping = Mock(return_value=True)
         redis = SynapseRedis(mock_client)
@@ -25,6 +27,7 @@ class TestSynapseRedis:
     def test_close(self):
         """Test close."""
         from synapse.redis.client import SynapseRedis
+
         mock_client = Mock()
         mock_client.close = Mock()
         redis = SynapseRedis(mock_client)
@@ -34,6 +37,7 @@ class TestSynapseRedis:
     def test_store_node(self):
         """Test store_node."""
         from synapse.redis.client import SynapseRedis
+
         mock_client = Mock()
         mock_json = Mock()
         mock_json.set = Mock(return_value=True)
@@ -44,13 +48,14 @@ class TestSynapseRedis:
             domain="test",
             node_type="entity",
             content="test content",
-            embedding=[0.1] * 768
+            embedding=[0.1] * 768,
         )
         assert result == "node:test:123"
 
     def test_get_node_success(self):
         """Test get_node success."""
         from synapse.redis.client import SynapseRedis
+
         mock_client = Mock()
         mock_json = Mock()
         mock_json.get = Mock(return_value={"id": "node:test:123"})
@@ -62,6 +67,7 @@ class TestSynapseRedis:
     def test_get_node_list_result(self):
         """Test get_node with list result."""
         from synapse.redis.client import SynapseRedis
+
         mock_client = Mock()
         mock_json = Mock()
         mock_json.get = Mock(return_value=[{"id": "node:test:123"}])
@@ -73,6 +79,7 @@ class TestSynapseRedis:
     def test_get_node_not_found(self):
         """Test get_node not found."""
         from synapse.redis.client import SynapseRedis
+
         mock_client = Mock()
         mock_json = Mock()
         mock_json.get = Mock(side_effect=Exception("Not found"))
@@ -84,18 +91,22 @@ class TestSynapseRedis:
     def test_update_node_success(self):
         """Test update_node success."""
         from synapse.redis.client import SynapseRedis
+
         mock_client = Mock()
         mock_json = Mock()
         mock_json.get = Mock(return_value={"id": "node:test:123", "metadata": {}})
         mock_json.set = Mock(return_value=True)
         mock_client.json = Mock(return_value=mock_json)
         redis = SynapseRedis(mock_client)
-        result = redis.update_node("node:test:123", [{"op": "set", "path": "$.metadata.foo", "value": "bar"}])
+        result = redis.update_node(
+            "node:test:123", [{"op": "set", "path": "$.metadata.foo", "value": "bar"}]
+        )
         assert result is True
 
     def test_update_node_not_found(self):
         """Test update_node not found."""
         from synapse.redis.client import SynapseRedis
+
         mock_client = Mock()
         mock_json = Mock()
         mock_json.get = Mock(return_value=None)
@@ -107,33 +118,39 @@ class TestSynapseRedis:
     def test_update_node_delete_op(self):
         """Test update_node delete operation."""
         from synapse.redis.client import SynapseRedis
+
         mock_client = Mock()
         mock_json = Mock()
-        mock_json.get = Mock(return_value={"id": "node:test:123", "metadata": {"foo": "bar"}})
+        mock_json.get = Mock(
+            return_value={"id": "node:test:123", "metadata": {"foo": "bar"}}
+        )
         mock_json.delete = Mock(return_value=True)
         mock_client.json = Mock(return_value=mock_json)
         redis = SynapseRedis(mock_client)
-        result = redis.update_node("node:test:123", [{"op": "delete", "path": "$.metadata.foo"}])
+        result = redis.update_node(
+            "node:test:123", [{"op": "delete", "path": "$.metadata.foo"}]
+        )
         assert result is True
 
     def test_update_node_append_op(self):
         """Test update_node append operation."""
         from synapse.redis.client import SynapseRedis
+
         mock_client = Mock()
         mock_json = Mock()
-        mock_json.get = Mock(side_effect=[
-            {"id": "node:test:123", "list": []},
-            []
-        ])
+        mock_json.get = Mock(side_effect=[{"id": "node:test:123", "list": []}, []])
         mock_json.set = Mock(return_value=True)
         mock_client.json = Mock(return_value=mock_json)
         redis = SynapseRedis(mock_client)
-        result = redis.update_node("node:test:123", [{"op": "append", "path": "$.list", "value": "item"}])
+        result = redis.update_node(
+            "node:test:123", [{"op": "append", "path": "$.list", "value": "item"}]
+        )
         assert result is True
 
     def test_search_hybrid_with_embedding(self):
         """Test search_hybrid with embedding."""
         from synapse.redis.client import SynapseRedis
+
         mock_client = Mock()
         mock_ft = Mock()
         mock_doc = Mock()
@@ -149,6 +166,7 @@ class TestSynapseRedis:
     def test_search_hybrid_fallback_bm25(self):
         """Test search_hybrid fallback to BM25."""
         from synapse.redis.client import SynapseRedis
+
         mock_client = Mock()
         mock_ft = Mock()
         mock_ft.search = Mock(side_effect=[Exception("KNN failed"), Mock(docs=[])])
@@ -160,6 +178,7 @@ class TestSynapseRedis:
     def test_search_hybrid_error(self):
         """Test search_hybrid error."""
         from synapse.redis.client import SynapseRedis
+
         mock_client = Mock()
         mock_client.ft = Mock(side_effect=Exception("Redis error"))
         redis = SynapseRedis(mock_client)
@@ -169,12 +188,15 @@ class TestSynapseRedis:
     def test_get_linked_nodes(self):
         """Test get_linked_nodes."""
         from synapse.redis.client import SynapseRedis
+
         mock_client = Mock()
         mock_json = Mock()
-        mock_json.get = Mock(side_effect=[
-            {"id": "node:test:1", "links": {"outbound": ["node:test:2"]}},
-            {"id": "node:test:2"}
-        ])
+        mock_json.get = Mock(
+            side_effect=[
+                {"id": "node:test:1", "links": {"outbound": ["node:test:2"]}},
+                {"id": "node:test:2"},
+            ]
+        )
         mock_client.json = Mock(return_value=mock_json)
         redis = SynapseRedis(mock_client)
         result = redis.get_linked_nodes("node:test:1")
@@ -183,6 +205,7 @@ class TestSynapseRedis:
     def test_get_linked_nodes_not_found(self):
         """Test get_linked_nodes node not found."""
         from synapse.redis.client import SynapseRedis
+
         mock_client = Mock()
         mock_json = Mock()
         mock_json.get = Mock(return_value=None)
@@ -194,6 +217,7 @@ class TestSynapseRedis:
     def test_float_to_bytes(self):
         """Test _float_to_bytes."""
         from synapse.redis.client import SynapseRedis
+
         mock_client = Mock()
         redis = SynapseRedis(mock_client)
         result = redis._float_to_bytes([1.0, 2.0, 3.0])
@@ -203,6 +227,7 @@ class TestSynapseRedis:
     def test_doc_to_dict(self):
         """Test _doc_to_dict."""
         from synapse.redis.client import SynapseRedis
+
         mock_client = Mock()
         redis = SynapseRedis(mock_client)
         mock_doc = Mock()
@@ -214,6 +239,7 @@ class TestSynapseRedis:
     def test_doc_to_dict_invalid_json(self):
         """Test _doc_to_dict with invalid JSON."""
         from synapse.redis.client import SynapseRedis
+
         mock_client = Mock()
         redis = SynapseRedis(mock_client)
         mock_doc = Mock()

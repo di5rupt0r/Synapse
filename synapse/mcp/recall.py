@@ -62,7 +62,7 @@ class MCPRecall:
             return {
                 "results": matched_nodes,
                 "total": len(matched_nodes),
-                "query_time_ms": 0
+                "query_time_ms": 0,
             }
 
         except Exception as e:
