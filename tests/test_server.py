@@ -15,7 +15,6 @@ def test_server_health_endpoint():
         patch("synapse.server.synapse_redis") as mock_synapse_redis,
         patch("synapse.server.embedding_cache") as mock_cache,
         patch("synapse.server.get_settings") as mock_get_settings,
-        patch("synapse.server.mcp_discovery"),
     ):
         mock_synapse_redis.ping = AsyncMock(return_value=True)
         mock_cache.embed.return_value = [0.1] * 768
@@ -34,23 +33,7 @@ def test_server_health_endpoint():
         assert "services" in data
         assert data["services"]["redis"] == "connected"
         assert data["services"]["embedding"] == "available"
-
-
-def test_server_mcp_discovery_endpoints():
-    """Test MCP discovery endpoints."""
-    from synapse.server import app
-
-    client = TestClient(app)
-
-    with patch("synapse.server.mcp_discovery") as mock_discovery:
-        mock_discovery.list_servers.return_value = [
-            {"name": "synapse", "version": "0.1.0"}
-        ]
-
-        response = client.get("/mcp/servers")
-        assert response.status_code == 200
-        data = response.json()
-        assert "servers" in data
+        assert data["services"]["mcp"] == "running"
 
 
 def test_server_metrics_endpoint():
