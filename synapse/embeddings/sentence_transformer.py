@@ -33,7 +33,15 @@ class SentenceTransformerBackend(EmbeddingBackend):
         embeddings = self.model.encode(texts, convert_to_numpy=True)
         # Handle both numpy arrays and lists
         if hasattr(embeddings, "tolist"):
-            return embeddings.tolist()
+            res = embeddings.tolist()
+            if res and not isinstance(res[0], list):
+                return [res]
+            return res
+        
+        # In case it's a 1D list of floats
+        if embeddings and isinstance(embeddings[0], float):
+            return [embeddings]
+            
         return [list(emb) for emb in embeddings]
 
     def _validate_dimension(self) -> None:

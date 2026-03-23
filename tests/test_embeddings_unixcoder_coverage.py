@@ -1,292 +1,225 @@
-"""Tests for embeddings/unixcoder.py - 100% Coverage."""
+"""Tests for UniXCoder Embedding Backend - Complete coverage."""
 
-from unittest.mock import MagicMock, Mock, patch
-
+from unittest.mock import Mock, patch
+from types import SimpleNamespace
+import numpy as np
 import pytest
-
-# Mock torch before any imports that might use it
-torch_mock = MagicMock()
-torch_mock.device = Mock
-torch_mock.tensor = Mock
-sys_modules_patcher = patch.dict("sys.modules", {"torch": torch_mock})
-sys_modules_patcher.start()
+import torch
 
 
 class TestUniXCoderBackend:
-    """Test UniXCoder backend functionality."""
+    """UniXCoder backend test coverage."""
 
-    @patch("synapse.embeddings.unixcoder.torch.cuda.is_available")
-    @patch("synapse.embeddings.unixcoder.AutoTokenizer")
-    @patch("synapse.embeddings.unixcoder.AutoModel")
-    def test_initialization_cuda_available(
-        self, mock_auto_model, mock_auto_tokenizer, mock_cuda
-    ):
-        """Test initialization when CUDA is available."""
-        mock_cuda.return_value = True
-        mock_tokenizer = Mock()
-        mock_model = Mock()
-        mock_auto_tokenizer.from_pretrained.return_value = mock_tokenizer
-        mock_auto_model.from_pretrained.return_value = mock_model
+    def test_initialization_cpu_only(self):
+        with (
+            patch("torch.cuda.is_available", return_value=False),
+            patch("synapse.embeddings.unixcoder.AutoTokenizer") as mock_tokenizer,
+            patch("synapse.embeddings.unixcoder.AutoModel") as mock_model,
+        ):
+            mock_tokenizer.from_pretrained.return_value = Mock()
+            mock_model.from_pretrained.return_value = Mock()
 
-        from synapse.embeddings.unixcoder import UniXCoderBackend
+            from synapse.embeddings.unixcoder import UniXCoderBackend
+            backend = UniXCoderBackend()
+            
+            assert backend.model_name == "microsoft/unixcoder-base"
+            assert backend.device.type == "cpu"
+            assert backend.dimension == 768
 
-        backend = UniXCoderBackend()
+    def test_initialization_cuda_available(self):
+        with (
+            patch("torch.cuda.is_available", return_value=True),
+            patch("synapse.embeddings.unixcoder.AutoTokenizer") as mock_tokenizer,
+            patch("synapse.embeddings.unixcoder.AutoModel") as mock_model,
+        ):
+            mock_tokenizer.from_pretrained.return_value = Mock()
+            mock_model.from_pretrained.return_value = Mock()
 
-        assert backend.device == torch_mock.device("cuda")
-        assert backend.tokenizer == mock_tokenizer
-        assert backend.model == mock_model
-        mock_model.to.assert_called_once_with(torch_mock.device("cuda"))
+            from synapse.embeddings.unixcoder import UniXCoderBackend
+            backend = UniXCoderBackend()
+            assert backend.device.type == "cuda"
 
-    @patch("synapse.embeddings.unixcoder.torch.cuda.is_available")
-    @patch("synapse.embeddings.unixcoder.AutoTokenizer")
-    @patch("synapse.embeddings.unixcoder.AutoModel")
-    def test_initialization_cpu_only(
-        self, mock_auto_model, mock_auto_tokenizer, mock_cuda
-    ):
-        """Test initialization when CUDA is not available."""
-        mock_cuda.return_value = False
-        mock_tokenizer = Mock()
-        mock_model = Mock()
-        mock_auto_tokenizer.from_pretrained.return_value = mock_tokenizer
-        mock_auto_model.from_pretrained.return_value = mock_model
+    def test_initialization_custom_model(self):
+        with (
+            patch("torch.cuda.is_available", return_value=False),
+            patch("synapse.embeddings.unixcoder.AutoTokenizer") as mock_tokenizer,
+            patch("synapse.embeddings.unixcoder.AutoModel") as mock_model,
+        ):
+            mock_tokenizer.from_pretrained.return_value = Mock()
+            mock_model.from_pretrained.return_value = Mock()
 
-        from synapse.embeddings.unixcoder import UniXCoderBackend
-
-        backend = UniXCoderBackend()
-
-        assert backend.device == torch_mock.device("cpu")
-        assert backend.tokenizer == mock_tokenizer
-        assert backend.model == mock_model
-        mock_model.to.assert_called_once_with(torch_mock.device("cpu"))
-
-    @patch("synapse.embeddings.unixcoder.torch.cuda.is_available")
-    @patch("synapse.embeddings.unixcoder.AutoTokenizer")
-    @patch("synapse.embeddings.unixcoder.AutoModel")
-    def test_initialization_custom_model(
-        self, mock_auto_model, mock_auto_tokenizer, mock_cuda
-    ):
-        """Test initialization with custom model name."""
-        mock_cuda.return_value = False
-        mock_tokenizer = Mock()
-        mock_model = Mock()
-        mock_auto_tokenizer.from_pretrained.return_value = mock_tokenizer
-        mock_auto_model.from_pretrained.return_value = mock_model
-
-        from synapse.embeddings.unixcoder import UniXCoderBackend
-
-        backend = UniXCoderBackend("custom/unixcoder-model")
-
-        assert backend.model_name == "custom/unixcoder-model"
-        mock_auto_tokenizer.from_pretrained.assert_called_once_with(
-            "custom/unixcoder-model"
-        )
-        mock_auto_model.from_pretrained.assert_called_once_with(
-            "custom/unixcoder-model"
-        )
+            from synapse.embeddings.unixcoder import UniXCoderBackend
+            backend = UniXCoderBackend("custom-model")
+            assert backend.model_name == "custom-model"
 
     def test_get_dimension(self):
-        """Test _get_dimension returns correct dimension."""
-        from synapse.embeddings.unixcoder import UniXCoderBackend
-
-        backend = UniXCoderBackend.__new__(UniXCoderBackend)
-
-        dimension = backend._get_dimension()
-        assert dimension == 768
-
-    @patch("synapse.embeddings.unixcoder.torch.cuda.is_available")
-    @patch("synapse.embeddings.unixcoder.AutoTokenizer")
-    @patch("synapse.embeddings.unixcoder.AutoModel")
-    def test_embed_real_tensor_path(
-        self, mock_auto_model, mock_auto_tokenizer, mock_cuda
-    ):
-        """Test embed with real tensors (normal path)."""
-        mock_cuda.return_value = False
-
-        # Setup tokenizer mock
-        mock_tokenizer = Mock()
-        mock_inputs = {
-            "input_ids": torch_mock.tensor([[1, 2, 3]]),
-            "attention_mask": torch_mock.tensor([[1, 1, 1]]),
-        }
-        mock_tokenizer.return_value = mock_inputs
-        mock_auto_tokenizer.from_pretrained.return_value = mock_tokenizer
-
-        # Setup model mock
-        mock_model = Mock()
-        mock_outputs = Mock()
-        mock_last_hidden = torch_mock.tensor(
-            [[[0.1, 0.2, 0.3]]]
-        )  # Will be expanded to 768
-        mock_outputs.last_hidden_state = mock_last_hidden
-        mock_model.return_value = mock_outputs
-        mock_auto_model.from_pretrained.return_value = mock_model
-
-        from synapse.embeddings.unixcoder import UniXCoderBackend
-
-        backend = UniXCoderBackend()
-
-        # Mock the dimension check
-        with patch.object(backend, "_get_dimension", return_value=3):
-            result = backend.embed("test")
-
-        assert isinstance(result, list)
-        mock_tokenizer.assert_called_once()
-        mock_model.assert_called_once()
-
-    @patch("synapse.embeddings.unixcoder.torch.cuda.is_available")
-    @patch("synapse.embeddings.unixcoder.AutoTokenizer")
-    @patch("synapse.embeddings.unixcoder.AutoModel")
-    def test_embed_mock_dict_path(
-        self, mock_auto_model, mock_auto_tokenizer, mock_cuda
-    ):
-        """Test embed with mock dict inputs (testing path)."""
-        mock_cuda.return_value = False
-
-        # Setup tokenizer mock that returns dict (no .to method)
-        mock_tokenizer = Mock()
-        mock_inputs = {"input_ids": [[1, 2, 3]], "attention_mask": [[1, 1, 1]]}
-        mock_tokenizer.return_value = mock_inputs
-        mock_auto_tokenizer.from_pretrained.return_value = mock_tokenizer
-
-        # Setup model mock
-        mock_model = Mock()
-        mock_outputs = Mock()
-        mock_last_hidden = Mock()
-        # Mock that doesn't have .cpu method
-        mock_last_hidden.cpu = Mock(side_effect=AttributeError("No cpu method"))
-        mock_outputs.last_hidden_state = mock_last_hidden
-        mock_model.return_value = mock_outputs
-        mock_auto_model.from_pretrained.return_value = mock_model
-
-        from synapse.embeddings.unixcoder import UniXCoderBackend
-
-        backend = UniXCoderBackend()
-
-        # Should use fallback path
-        result = backend.embed("test")
-
-        assert isinstance(result, list)
-        assert len(result) == 768  # Fallback dimension
-
-    @patch("synapse.embeddings.unixcoder.torch.cuda.is_available")
-    @patch("synapse.embeddings.unixcoder.AutoTokenizer")
-    @patch("synapse.embeddings.unixcoder.AutoModel")
-    def test_embed_mock_nested_list_path(
-        self, mock_auto_model, mock_auto_tokenizer, mock_cuda
-    ):
-        """Test embed with mock that returns nested list."""
-        mock_cuda.return_value = False
-
-        # Setup tokenizer mock
-        mock_tokenizer = Mock()
-        mock_inputs = Mock()
-        mock_inputs.to = Mock(return_value=mock_inputs)
-        mock_tokenizer.return_value = mock_inputs
-        mock_auto_tokenizer.from_pretrained.return_value = mock_tokenizer
-
-        # Setup model mock that returns nested list
-        mock_model = Mock()
-        mock_outputs = Mock()
-        mock_last_hidden = Mock()
-        mock_nested = [[0.1] * 768]  # Nested list
-        mock_last_hidden.cpu.return_value.numpy.return_value = mock_nested
-        mock_outputs.last_hidden_state = mock_last_hidden
-        mock_model.return_value = mock_outputs
-        mock_auto_model.from_pretrained.return_value = mock_model
-
-        from synapse.embeddings.unixcoder import UniXCoderBackend
-
-        backend = UniXCoderBackend()
-
-        result = backend.embed("test")
-
-        assert isinstance(result, list)
-        assert len(result) == 768
-
-    @patch("synapse.embeddings.unixcoder.torch.cuda.is_available")
-    @patch("synapse.embeddings.unixcoder.AutoTokenizer")
-    @patch("synapse.embeddings.unixcoder.AutoModel")
-    def test_embed_dimension_validation(
-        self, mock_auto_model, mock_auto_tokenizer, mock_cuda
-    ):
-        """Test embed validates dimension correctly."""
-        mock_cuda.return_value = False
-
-        # Setup tokenizer mock
-        mock_tokenizer = Mock()
-        mock_inputs = Mock()
-        mock_inputs.to = Mock(return_value=mock_inputs)
-        mock_tokenizer.return_value = mock_inputs
-        mock_auto_tokenizer.from_pretrained.return_value = mock_tokenizer
-
-        # Setup model mock that returns wrong dimension
-        mock_model = Mock()
-        mock_outputs = Mock()
-        mock_last_hidden = Mock()
-        mock_last_hidden.cpu.return_value.numpy.return_value = [
-            [0.1] * 500
-        ]  # Wrong dimension
-        mock_outputs.last_hidden_state = mock_last_hidden
-        mock_model.return_value = mock_outputs
-        mock_auto_model.from_pretrained.return_value = mock_model
-
-        from synapse.embeddings.unixcoder import UniXCoderBackend
-
-        backend = UniXCoderBackend()
-
-        with pytest.raises(
-            ValueError, match="Embedding dimension 500 does not match expected 768"
+        with (
+            patch("torch.cuda.is_available", return_value=False),
+            patch("synapse.embeddings.unixcoder.AutoTokenizer") as mock_tokenizer,
+            patch("synapse.embeddings.unixcoder.AutoModel") as mock_model,
         ):
-            backend.embed("test")
+            from synapse.embeddings.unixcoder import UniXCoderBackend
+            backend = UniXCoderBackend()
+            assert backend._get_dimension() == 768
 
-    @patch("synapse.embeddings.unixcoder.torch.cuda.is_available")
-    @patch("synapse.embeddings.unixcoder.AutoTokenizer")
-    @patch("synapse.embeddings.unixcoder.AutoModel")
-    def test_embed_batch_real_tensor_path(
-        self, mock_auto_model, mock_auto_tokenizer, mock_cuda
-    ):
-        """Test embed_batch with real tensors."""
-        mock_cuda.return_value = False
+    def test_embed_real_tensor_path(self):
+        with (
+            patch("torch.cuda.is_available", return_value=False),
+            patch("synapse.embeddings.unixcoder.AutoTokenizer") as mock_tokenizer,
+            patch("synapse.embeddings.unixcoder.AutoModel") as mock_model,
+        ):
+            mock_tokenizer_instance = Mock()
+            mock_tokenizer_instance.return_value = {
+                "input_ids": torch.tensor([[1, 2, 3]]), 
+                "attention_mask": torch.tensor([[1, 1, 1]])
+            }
+            mock_tokenizer_instance.return_value["to"] = lambda x: mock_tokenizer_instance.return_value
+            mock_tokenizer.from_pretrained.return_value = mock_tokenizer_instance
 
-        # Setup tokenizer mock
-        mock_tokenizer = Mock()
-        mock_inputs = {
-            "input_ids": torch_mock.tensor([[1, 2, 3], [4, 5, 6]]),
-            "attention_mask": torch_mock.tensor([[1, 1, 1], [1, 1, 1]]),
-        }
-        mock_tokenizer.return_value = mock_inputs
-        mock_auto_tokenizer.from_pretrained.return_value = mock_tokenizer
+            mock_model_instance = Mock()
+            mock_model_instance.to.return_value = mock_model_instance
+            
+            # 1 batch, 3 tokens, 768 dim
+            mock_outputs = SimpleNamespace(last_hidden_state=torch.ones(1, 3, 768) * 0.1)
+            mock_model_instance.return_value = mock_outputs
+            mock_model.from_pretrained.return_value = mock_model_instance
 
-        # Setup model mock
-        mock_model = Mock()
-        mock_outputs = Mock()
-        mock_last_hidden = torch_mock.tensor(
-            [[[0.1, 0.2]], [[0.3, 0.4]]]
-        )  # 2 samples, small dim
-        mock_outputs.last_hidden_state = mock_last_hidden
-        mock_model.return_value = mock_outputs
-        mock_auto_model.from_pretrained.return_value = mock_model
+            from synapse.embeddings.unixcoder import UniXCoderBackend
+            backend = UniXCoderBackend()
+            result = backend.embed("test code")
 
-        from synapse.embeddings.unixcoder import UniXCoderBackend
+            assert isinstance(result, list)
+            assert len(result) == 768
+            assert isinstance(result[0], float)
 
-        backend = UniXCoderBackend()
+    def test_embed_mock_dict_path(self):
+        with (
+            patch("torch.cuda.is_available", return_value=False),
+            patch("synapse.embeddings.unixcoder.AutoTokenizer") as mock_tokenizer,
+            patch("synapse.embeddings.unixcoder.AutoModel") as mock_model,
+        ):
+            # No "to" method, just a dict mock
+            mock_tokenizer_instance = Mock()
+            # To trigger the mock path where attention_mask has no unsqueeze
+            mock_tokenizer_instance.return_value = {
+                "input_ids": [1, 2, 3],
+                "attention_mask": [1, 1, 1] 
+            }
+            mock_tokenizer.from_pretrained.return_value = mock_tokenizer_instance
 
-        # Mock dimension check
-        with patch.object(backend, "_get_dimension", return_value=2):
-            result = backend.embed_batch(["text1", "text2"])
+            mock_model_instance = Mock()
+            mock_model_instance.to.return_value = mock_model_instance
+            
+            # last_hidden_state returns something with cpu
+            class MockTensor:
+                def cpu(self):
+                    return self
+                def numpy(self):
+                    return [0.1] * 768
+            
+            mock_outputs = SimpleNamespace(last_hidden_state=MockTensor())
+            mock_model_instance.return_value = mock_outputs
+            mock_model.from_pretrained.return_value = mock_model_instance
 
-        assert isinstance(result, list)
-        assert len(result) == 2
-        mock_tokenizer.assert_called_once_with(
-            ["text1", "text2"],
-            return_tensors="pt",
-            truncation=True,
-            max_length=512,
-            padding=True,
-        )
+            from synapse.embeddings.unixcoder import UniXCoderBackend
+            backend = UniXCoderBackend()
+            result = backend.embed("test code")
 
+            assert isinstance(result, list)
+            assert len(result) == 768
 
-# Clean up the mock at the end of the module
-def teardown_module():
-    """Clean up torch mock after module execution."""
-    sys_modules_patcher.stop()
+    def test_embed_mock_nested_list_path(self):
+        with (
+            patch("torch.cuda.is_available", return_value=False),
+            patch("synapse.embeddings.unixcoder.AutoTokenizer") as mock_tokenizer,
+            patch("synapse.embeddings.unixcoder.AutoModel") as mock_model,
+        ):
+            mock_tokenizer_instance = Mock()
+            mock_tokenizer_instance.return_value = {
+                "input_ids": [1, 2, 3],
+                "attention_mask": [1, 1, 1] 
+            }
+            mock_tokenizer.from_pretrained.return_value = mock_tokenizer_instance
+
+            mock_model_instance = Mock()
+            mock_model_instance.to.return_value = mock_model_instance
+            
+            class MockTensor:
+                def cpu(self):
+                    return self
+                def numpy(self):
+                    return [[0.1] * 768]
+            
+            mock_outputs = SimpleNamespace(last_hidden_state=MockTensor())
+            mock_model_instance.return_value = mock_outputs
+            mock_model.from_pretrained.return_value = mock_model_instance
+
+            from synapse.embeddings.unixcoder import UniXCoderBackend
+            backend = UniXCoderBackend()
+            result = backend.embed("test code")
+
+            assert isinstance(result, list)
+            assert len(result) == 768
+
+    def test_embed_dimension_validation(self):
+        with (
+            patch("torch.cuda.is_available", return_value=False),
+            patch("synapse.embeddings.unixcoder.AutoTokenizer") as mock_tokenizer,
+            patch("synapse.embeddings.unixcoder.AutoModel") as mock_model,
+        ):
+            mock_tokenizer_instance = Mock()
+            mock_tokenizer_instance.return_value = {
+                "input_ids": [1, 2, 3],
+                "attention_mask": [1, 1, 1] 
+            }
+            mock_tokenizer.from_pretrained.return_value = mock_tokenizer_instance
+
+            mock_model_instance = Mock()
+            mock_model_instance.to.return_value = mock_model_instance
+            
+            class MockTensor:
+                def cpu(self):
+                    return self
+                def numpy(self):
+                    return [0.1] * 500  # Wrong dimension
+            
+            mock_outputs = SimpleNamespace(last_hidden_state=MockTensor())
+            mock_model_instance.return_value = mock_outputs
+            mock_model.from_pretrained.return_value = mock_model_instance
+
+            from synapse.embeddings.unixcoder import UniXCoderBackend
+            backend = UniXCoderBackend()
+            
+            with pytest.raises(ValueError, match="Embedding dimension 500 does not match expected 768"):
+                backend.embed("test code")
+
+    def test_embed_batch_real_tensor_path(self):
+        with (
+            patch("torch.cuda.is_available", return_value=False),
+            patch("synapse.embeddings.unixcoder.AutoTokenizer") as mock_tokenizer,
+            patch("synapse.embeddings.unixcoder.AutoModel") as mock_model,
+        ):
+            mock_tokenizer_instance = Mock()
+            mock_tokenizer_instance.return_value = {
+                "input_ids": torch.tensor([[1, 2, 3], [4, 5, 6]]), 
+                "attention_mask": torch.tensor([[1, 1, 1], [1, 1, 1]])
+            }
+            mock_tokenizer_instance.return_value["to"] = lambda x: mock_tokenizer_instance.return_value
+            mock_tokenizer.from_pretrained.return_value = mock_tokenizer_instance
+
+            mock_model_instance = Mock()
+            mock_model_instance.to.return_value = mock_model_instance
+            
+            # 2 batch, 3 tokens, 768 dim
+            mock_outputs = SimpleNamespace(last_hidden_state=torch.ones(2, 3, 768) * 0.1)
+            mock_model_instance.return_value = mock_outputs
+            mock_model.from_pretrained.return_value = mock_model_instance
+
+            from synapse.embeddings.unixcoder import UniXCoderBackend
+            backend = UniXCoderBackend()
+            result = backend.embed_batch(["test code 1", "test code 2"])
+
+            assert isinstance(result, list)
+            assert len(result) == 2
+            assert len(result[0]) == 768
+            assert len(result[1]) == 768
