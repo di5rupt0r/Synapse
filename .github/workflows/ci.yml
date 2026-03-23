@@ -1,21 +1,20 @@
-name: CI Pipeline
+name: CI/CD Pipeline
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main]
   pull_request:
     branches: [main]
 
 env:
-  PYTHON_VERSION: "3.11"
+  PYTHON_VERSION: "3.12"
 
 jobs:
+  # ─────────────────────────────────────────────────────────
+  # 1. TEST
+  # ─────────────────────────────────────────────────────────
   test:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.11", "3.12"]
-
     services:
       redis:
         image: redis/redis-stack-server:latest
@@ -30,10 +29,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5  # ← FIX: v4 → v5
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Cache pip
         uses: actions/cache@v4
@@ -47,10 +46,10 @@ jobs:
           pip install -e ".[dev]"
           pip install -r requirements.txt
 
-      - name: Lint with ruff
+      - name: Lint
         run: |
-          ruff check synapse/ tests/ --fix
-          ruff format synapse/ tests/
+          ruff check synapse/ tests/
+          ruff format --check synapse/ tests/
 
       - name: Run tests
         run: |
@@ -60,27 +59,20 @@ jobs:
             --ignore=tests/test_chunking_treesitter_coverage.py \
             --ignore=tests/test_embeddings_sentence_transformer_coverage.py \
             --ignore=tests/test_embeddings_unixcoder_coverage.py \
-            --ignore=tests/test_server_full_coverage.py \
             --ignore=tests/test_embeddings_complete_coverage.py \
             --ignore=tests/test_chunking_treesitter_complete.py \
             --ignore=tests/test_remaining_modules_complete.py
 
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v5  # ← FIX: v4 → v5 (usa upload-artifact@v4)
+      - name: Upload coverage
+        uses: codecov/codecov-action@v5
         with:
           file: ./coverage.xml
           flags: unittests
-        continue-on-error: true  # ← FIX: não falha pipeline se codecov down
+        continue-on-error: true
 
-      - name: Upload test artifacts
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: test-results-${{ matrix.python-version }}
-          path: |
-            coverage.xml
-            htmlcov/
-
+  # ─────────────────────────────────────────────────────────
+  # 2. SECURITY
+  # ─────────────────────────────────────────────────────────
   security:
     runs-on: ubuntu-latest
     steps:
@@ -89,16 +81,13 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
-
-      - name: Install security tools
-        run: pip install bandit safety
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Security scan
-        run: bandit -r synapse/ -f json -o bandit-report.json || true
-
-      - name: Dependency check
-        run: safety check --json --output safety-report.json || true
+        run: |
+          pip install bandit safety
+          bandit -r synapse/ -f json -o bandit-report.json || true
+          safety check --json --output safety-report.json || true
 
       - name: Upload security reports
         uses: actions/upload-artifact@v4
@@ -108,14 +97,18 @@ jobs:
             bandit-report.json
             safety-report.json
 
+  # ─────────────────────────────────────────────────────────
+  # 3. DEPLOY  (main only)
+  # ─────────────────────────────────────────────────────────
   deploy:
     needs: [test, security]
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     environment: production
+
     steps:
       - name: Authenticate with Tailscale
-        uses: tailscale/github-action@v4
+        uses: tailscale/github-action@v2
         with:
           oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
           oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
@@ -129,112 +122,48 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
           timeout: 30s
-          command_timeout: 10m
+          command_timeout: 5m
           script: |
-            set -e
-            echo "Starting deployment to production server..."
+            set -euo pipefail
+
+            echo "▶ Pulling latest code..."
             cd /opt/synapse
             sudo -u synapse git fetch origin main
             sudo -u synapse git reset --hard origin/main
-            sudo -u synapse /opt/synapse/venv/bin/pip install -r requirements.txt
-            
-            # Restart service - clear logs first to only see fresh errors
-            sudo journalctl --rotate --vacuum-time=1s  # Clear old logs
+
+            echo "▶ Installing dependencies..."
+            sudo -u synapse /opt/synapse/venv/bin/pip install -q -r requirements.txt
+
+            echo "▶ Restarting service..."
             sudo systemctl restart synapse-server
-            echo "⏳ Waiting 5s for process spawn..."
-            sleep 5
-            
-            # DEBUG BLOCK - Pre-health diagnostics
-            echo "=== SERVICE DIAGNOSTICS ==="
-            
-            # 1. Verify systemd thinks it's running
-            if sudo systemctl is-active --quiet synapse-server; then
-              echo "✅ systemd: active"
-            else
-              echo "❌ systemd: NOT active"
-              sudo systemctl status synapse-server --no-pager -n 20
+
+            echo "▶ Waiting for process to bind..."
+            sleep 4
+
+            # Fail fast if systemd killed the process
+            if ! sudo systemctl is-active --quiet synapse-server; then
+              echo "❌ synapse-server failed to start:"
+              sudo journalctl -u synapse-server --no-pager -n 50
               exit 1
             fi
-            
-            # 2. Check process exists and port binding
-            echo "--- Process check ---"
-            if pgrep -f "uvicorn synapse.server:app" > /dev/null; then
-              echo "✅ uvicorn process running"
-              ps aux | grep "[u]vicorn synapse.server"
-            else
-              echo "❌ uvicorn process NOT found"
+
+            # Fail fast if logs show startup errors
+            if sudo journalctl -u synapse-server --no-pager -n 30 \
+                | grep -qiE "\b(error|exception|failed|traceback|attributeerror|importerror)\b"; then
+              echo "❌ Startup errors detected:"
+              sudo journalctl -u synapse-server --no-pager -n 50
+              exit 1
             fi
-            
-            echo "--- Port binding check ---"
-            if ss -tlnp | grep -q ':8000'; then
-              echo "✅ Port 8000 is listening"
-              ss -tlnp | grep ':8000'
-            else
-              echo "⚠️  Port 8000 NOT listening (app likely crashed)"
-            fi
-            
-            # 3. Check last 50 lines for startup errors
-            echo "--- Recent logs (last 50 lines) ---"
-            sudo journalctl -u synapse-server --no-pager -n 50 | tail -20
-            
-            # Look for specific error patterns - WARNING: disabled to allow deployment of fix
-            # if sudo journalctl -u synapse-server --no-pager -n 50 | grep -qiE "\\b(error|exception|failed|traceback|attributeerror|importerror)\\b"; then
-            #   echo "❌ Errors detected in logs - dumping full context:"
-            #   sudo journalctl -u synapse-server --no-pager -n 100
-            #   exit 1
-            # fi
-            echo "⚠️  Error check temporarily disabled to allow deployment of server.py fix"
-            
-            echo "=== END DIAGNOSTICS ==="
-            echo ""
-            
-            # Now attempt health checks with extended retries
-            echo "🏥 Testing health endpoint..."
-            for i in {1..10}; do
-              if curl -sf http://localhost:8000/health; then
-                echo "✅ Health check passed on attempt $i"
+
+            echo "▶ Health check..."
+            for i in {1..8}; do
+              if curl -sf http://localhost:8000/health > /dev/null; then
+                echo "✅ /health OK (attempt $i)"
                 break
-              else
-                echo "⚠️  Attempt $i/10 failed, waiting 3s..."
-                sleep 3
               fi
-              
-              # On last attempt, fail with full diagnostics
-              if [ $i -eq 10 ]; then
-                echo "❌ Health check failed after 10 attempts"
-                echo "Final port check:"
-                ss -tlnp | grep ':8000' || echo "Port 8000 not bound"
-                echo "Final log dump:"
-                sudo journalctl -u synapse-server --no-pager -n 100
-                exit 1
-              fi
+              [ $i -eq 8 ] && { echo "❌ Health check failed after 8 attempts"; sudo journalctl -u synapse-server --no-pager -n 50; exit 1; }
+              echo "  attempt $i/8 — waiting 3s..."
+              sleep 3
             done
-            
-            echo "✅ Deployment verified - service healthy"
 
-      - name: Deployment Status
-        if: always()
-        run: |
-          if [ "${{ job.status }}" == "success" ]; then
-            echo "✅ Deployment completed successfully"
-          else
-            echo "❌ Deployment failed"
-            exit 1
-          fi
-
-      - name: Notify failure
-        if: failure()
-        run: echo "::error::Deployment failed!"
-
-  notify:
-    needs: [test, security, deploy]
-    runs-on: ubuntu-latest
-    if: always()
-    steps:
-      - name: Success
-        if: needs.test.result == 'success' && needs.security.result == 'success'
-        run: echo "✅ All checks passed!"
-
-      - name: Failure
-        if: needs.test.result == 'failure' || needs.security.result == 'failure'
-        run: echo "❌ Some checks failed!"
+            echo "✅ Deployment complete"
