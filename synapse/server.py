@@ -112,28 +112,25 @@ async def mcp_endpoint(request: Request) -> Response:
             }
         elif method == "tools/list":
             # Get tools from FastMCP instance
+            tools_list = await mcp.list_tools()
             tools = []
-            for tool_name, tool_info in mcp.tools.items():
+            for tool in tools_list.tools:
                 tools.append({
-                    "name": tool_name,
-                    "description": tool_info.description or f"Tool: {tool_name}",
-                    "inputSchema": tool_info.input_schema or {"type": "object", "properties": {}}
+                    "name": tool.name,
+                    "description": tool.description or f"Tool: {tool.name}",
+                    "inputSchema": tool.inputSchema or {"type": "object", "properties": {}}
                 })
             response["result"] = {"tools": tools}
         elif method == "tools/call":
             tool_name = params.get("name")
             arguments = params.get("arguments", {})
             
-            if tool_name not in mcp.tools:
-                response["error"] = {"code": -32601, "message": f"Tool '{tool_name}' not found"}
-            else:
-                # Call the tool function
-                tool_info = mcp.tools[tool_name]
-                try:
-                    result = await tool_info.function(**arguments)
-                    response["result"] = {"content": [{"type": "text", "text": str(result)}]}
-                except Exception as e:
-                    response["error"] = {"code": -32603, "message": str(e)}
+            # Call the tool using FastMCP's call_tool method
+            try:
+                result = await mcp.call_tool(tool_name, arguments)
+                response["result"] = {"content": result.content or []}
+            except Exception as e:
+                response["error"] = {"code": -32603, "message": str(e)}
         else:
             response["error"] = {"code": -32601, "message": f"Method '{method}' not found"}
         
