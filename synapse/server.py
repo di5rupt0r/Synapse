@@ -113,28 +113,24 @@ async def mcp_endpoint(request: Request) -> Response:
         elif method == "tools/list":
             # Get tools from FastMCP instance
             tools = []
-            for tool_name, tool_func in mcp._tools.items():
-                tool_info = tool_func.__doc__ or f"Tool: {tool_name}"
+            for tool_name, tool_info in mcp.tools.items():
                 tools.append({
                     "name": tool_name,
-                    "description": tool_info.strip(),
-                    "inputSchema": {
-                        "type": "object",
-                        "properties": {}
-                    }
+                    "description": tool_info.description or f"Tool: {tool_name}",
+                    "inputSchema": tool_info.input_schema or {"type": "object", "properties": {}}
                 })
             response["result"] = {"tools": tools}
         elif method == "tools/call":
             tool_name = params.get("name")
             arguments = params.get("arguments", {})
             
-            if tool_name not in mcp._tools:
+            if tool_name not in mcp.tools:
                 response["error"] = {"code": -32601, "message": f"Tool '{tool_name}' not found"}
             else:
                 # Call the tool function
-                tool_func = mcp._tools[tool_name]
+                tool_info = mcp.tools[tool_name]
                 try:
-                    result = await tool_func(**arguments)
+                    result = await tool_info.function(**arguments)
                     response["result"] = {"content": [{"type": "text", "text": str(result)}]}
                 except Exception as e:
                     response["error"] = {"code": -32603, "message": str(e)}
