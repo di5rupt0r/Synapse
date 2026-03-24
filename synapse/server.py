@@ -1,11 +1,13 @@
 """FastAPI Server for Synapse AKG."""
 
+import json
 import time
 from contextlib import asynccontextmanager
 
 import redis.asyncio as redis_async
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse
+from mcp.types import JSONRPCRequest, JSONRPCResponse
 
 from .config import get_settings
 from .embeddings.cache import EmbeddingCache
@@ -70,11 +72,89 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Mount FastMCP as ASGI sub-application at /mcp
-# This provides full MCP protocol support:
-#   POST /mcp/mcp  → initialize, tools/list, tools/call (JSON-RPC 2.0)
-# Note: FastMCP's streamable_http_app() handles /mcp internally, creating /mcp/mcp path
-app.mount("/mcp", mcp.streamable_http_app(), name="mcp")
+# Note: FastMCP's streamable_http_app() cannot be mounted in FastAPI due to task group issues
+# We need to create a custom MCP endpoint that handles the JSON-RPC protocol directly
+
+
+@app.post("/mcp")
+async def mcp_endpoint(request: Request) -> Response:
+    """Custom MCP endpoint that handles JSON-RPC protocol."""
+    try:
+        # Parse JSON-RPC request
+        body = await request.json()
+        
+        # Handle different JSON-RPC methods
+        if "method" not in body:
+            return Response(
+                content=json.dumps({"jsonrpc": "2.0", "error": {"code": -32600, "message": "Invalid Request"}}),
+                status_code=400,
+                media_type="application/json"
+            )
+        
+        method = body["method"]
+        request_id = body.get("id")
+        params = body.get("params", {})
+        
+        # Initialize response
+        response = {"jsonrpc": "2.0", "id": request_id}
+        
+        if method == "initialize":
+            response["result"] = {
+                "protocolVersion": "2024-11-05",
+                "capabilities": {
+                    "tools": {},
+                    "logging": {}
+                },
+                "serverInfo": {
+                    "name": "synapse",
+                    "version": "0.1.0"
+                }
+            }
+        elif method == "tools/list":
+            # Get tools from FastMCP instance
+            tools = []
+            for tool_name, tool_func in mcp._tools.items():
+                tool_info = tool_func.__doc__ or f"Tool: {tool_name}"
+                tools.append({
+                    "name": tool_name,
+                    "description": tool_info.strip(),
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {}
+                    }
+                })
+            response["result"] = {"tools": tools}
+        elif method == "tools/call":
+            tool_name = params.get("name")
+            arguments = params.get("arguments", {})
+            
+            if tool_name not in mcp._tools:
+                response["error"] = {"code": -32601, "message": f"Tool '{tool_name}' not found"}
+            else:
+                # Call the tool function
+                tool_func = mcp._tools[tool_name]
+                try:
+                    result = await tool_func(**arguments)
+                    response["result"] = {"content": [{"type": "text", "text": str(result)}]}
+                except Exception as e:
+                    response["error"] = {"code": -32603, "message": str(e)}
+        else:
+            response["error"] = {"code": -32601, "message": f"Method '{method}' not found"}
+        
+        return Response(
+            content=json.dumps(response),
+            media_type="application/json"
+        )
+        
+    except Exception as e:
+        return Response(
+            content=json.dumps({
+                "jsonrpc": "2.0", 
+                "error": {"code": -32603, "message": f"Internal error: {str(e)}"}
+            }),
+            status_code=500,
+            media_type="application/json"
+        )
 
 
 @app.get("/health")
