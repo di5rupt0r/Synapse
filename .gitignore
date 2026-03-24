@@ -48,3 +48,14 @@ Thumbs.db
 # Redis
 dump.rdb
 appendonly.aof
+
+# CI/CD Artifacts
+.coverage
+coverage.xml
+bandit-report.json
+safety-report.json
+htmlcov/
+*.egg-info/
+
+# CI/CD Infrastructure (keep private)
+ci/
