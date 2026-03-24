@@ -128,9 +128,6 @@ async def mcp_endpoint(request: Request) -> Response:
             # Call the tool using FastMCP's call_tool method
             try:
                 result = await mcp.call_tool(tool_name, arguments)
-                # Debug: Log result type and attributes
-                print(f"DEBUG: result type = {type(result)}")
-                print(f"DEBUG: result attrs = {[attr for attr in dir(result) if not attr.startswith('_')]}")
                 
                 # Handle different result types from FastMCP
                 if isinstance(result, list):
