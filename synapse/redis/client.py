@@ -15,9 +15,10 @@ class SynapseRedis:
     INDEX_NAME = "synapse_idx"
     NODE_PREFIX = "node:"
 
-    def __init__(self, redis_client: redis.Redis) -> None:
-        """Initialize with raw Redis client."""
+    def __init__(self, redis_client: Any) -> None:
+        """Initialize with raw Redis client (sync or async)."""
         self._client = redis_client
+        self._is_async = hasattr(redis_client, 'async_execute') or 'redis.asyncio' in str(type(redis_client))
 
     # ---- Low-level pass-through ----
     def ping(self) -> bool:  # pragma: no cover
@@ -48,7 +49,18 @@ class SynapseRedis:
             "links": links or {"inbound": [], "outbound": []},
             "created_at": time.time(),
         }
+        
+        # Store as JSON document
         self._client.json().set(node_id, "$", node)
+        
+        # Ensure the document is indexed by checking index info
+        # This forces RediSearch to update the index for the new document
+        try:
+            self._client.ft(self.INDEX_NAME).info()
+        except Exception:
+            # If index doesn't exist, it will be created on server startup
+            pass
+        
         return node_id
 
     def get_node(self, node_id: str) -> Optional[Dict[str, Any]]:

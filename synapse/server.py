@@ -5,6 +5,7 @@ import time
 from contextlib import asynccontextmanager
 
 import redis.asyncio as redis_async
+import redis
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse
 from mcp.types import JSONRPCRequest, JSONRPCResponse
@@ -34,13 +35,13 @@ async def lifespan(app: FastAPI):  # pragma: no cover
 
     # Initialize Redis
     redis_url = f"redis://{settings.redis_host}:{settings.redis_port}"
-    redis_client = redis_async.from_url(
+    redis_client = redis.from_url(
         redis_url,
         decode_responses=True,
         socket_connect_timeout=5,
         socket_keepalive=True,
     )
-    await redis_client.ping()
+    redis_client.ping()
 
     # Initialize SynapseRedis wrapper
     synapse_redis = SynapseRedis(redis_client)
