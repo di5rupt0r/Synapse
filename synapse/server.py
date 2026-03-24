@@ -114,7 +114,7 @@ async def mcp_endpoint(request: Request) -> Response:
             # Get tools from FastMCP instance
             tools_list = await mcp.list_tools()
             tools = []
-            for tool in tools_list.tools:
+            for tool in tools_list:
                 tools.append({
                     "name": tool.name,
                     "description": tool.description or f"Tool: {tool.name}",
