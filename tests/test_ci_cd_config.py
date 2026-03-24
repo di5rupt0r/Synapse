@@ -74,9 +74,9 @@ def test_ci_has_deploy_job():
 
     deploy_job = ci_config["jobs"]["deploy"]
 
-    # Deploy should run on main branch only
-    assert deploy_job["if"] == "github.ref == 'refs/heads/main'", (
-        "Deploy should only run on main"
+    # Deploy should run on main branch only (OAuth-free with push condition)
+    assert deploy_job["if"] == "github.ref == 'refs/heads/main' && github.event_name == 'push'", (
+        "Deploy should only run on main branch push"
     )
 
     # Deploy should depend on test and security
@@ -110,7 +110,7 @@ def test_ci_has_fallback_for_codecov():
 
 
 def test_ci_uploads_test_artifacts():
-    """Test CI uploads test artifacts properly."""
+    """Test CI uploads coverage to codecov (OAuth-free approach)."""
     ci_path = Path(".github/workflows/ci.yml")
 
     with open(ci_path) as f:
@@ -119,24 +119,21 @@ def test_ci_uploads_test_artifacts():
     test_job = ci_config["jobs"]["test"]
     steps = test_job["steps"]
 
-    # Should upload test artifacts
-    upload_found = False
+    # Should upload coverage to codecov (not artifacts)
+    codecov_found = False
     for step in steps:
-        if "uses" in step and "actions/upload-artifact" in step["uses"]:
-            upload_found = True
-            # Check if uploads coverage files
-            if "with" in step and "path" in step["with"]:
-                paths = step["with"]["path"]
-                if isinstance(paths, str):
-                    paths = [paths]
-                assert any("coverage.xml" in path for path in paths), (
-                    "Should upload coverage.xml"
-                )
-                assert any("htmlcov/" in path for path in paths), (
-                    "Should upload htmlcov/"
-                )
+        if "uses" in step and "codecov/codecov-action" in step["uses"]:
+            codecov_found = True
+            # Check codecov configuration
+            codecov_step = step
+            assert codecov_step.get("continue-on-error", False) is True, (
+                "Codecov should not fail pipeline"
+            )
+            assert codecov_step.get("with", {}).get("file") == "./coverage.xml", (
+                "Should upload coverage.xml"
+            )
 
-    assert upload_found, "Should upload test artifacts"
+    assert codecov_found, "Should upload coverage to codecov"
 
 
 def test_ci_has_proper_environment_setup():
