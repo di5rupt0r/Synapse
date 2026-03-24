@@ -72,8 +72,9 @@ app = FastAPI(
 
 # Mount FastMCP as ASGI sub-application at /mcp
 # This provides full MCP protocol support:
-#   POST /mcp  → initialize, tools/list, tools/call (JSON-RPC 2.0)
-app.mount("/mcp", mcp.streamable_http_app())
+#   POST /mcp/mcp  → initialize, tools/list, tools/call (JSON-RPC 2.0)
+# Note: FastMCP's streamable_http_app() handles /mcp internally, creating /mcp/mcp path
+app.mount("/mcp", mcp.streamable_http_app(), name="mcp")
 
 
 @app.get("/health")

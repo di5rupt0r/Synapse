@@ -68,7 +68,7 @@ class TestMCPEndpointExists:
         """INTEGRATION: POST /mcp/mcp returns something other than 404.
 
         FastMCP's streamable_http_app() mounts its endpoint at /mcp internally.
-        When the sub-app is mounted at /mcp, the full path is /mcp/mcp.
+        When sub-app is mounted at /mcp, full path is /mcp/mcp.
         """
         payload = {
             "jsonrpc": "2.0",

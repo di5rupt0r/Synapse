@@ -3,11 +3,10 @@
 RED phase: fail before refactor (routes return 200, MCPDiscovery import exists).
 GREEN phase: pass after refactor (routes gone, imports cleaned up).
 """
-# torch is available in the venv — no patching needed for imports.
+# torch is mocked for testing to avoid import dependency
 
-import ast
 import pathlib
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -42,14 +41,30 @@ def mock_cache():
 
 @pytest.fixture()
 def client(mock_redis, mock_cache):
-    import synapse.mcp_server as mcp_mod
-    import synapse.server as server_mod
+    # Mock all ML dependencies to avoid import issues
+    torch_mock = MagicMock()
+    torch_mock.__version__ = "2.0.0"
+    torch_mock.tensor = lambda x: x
 
-    mcp_mod.initialize(mock_redis, mock_cache)
-    server_mod.synapse_redis = mock_redis
-    server_mod.embedding_cache = mock_cache
+    transformers_mock = MagicMock()
+    transformers_mock.AutoModel = MagicMock()
+    transformers_mock.AutoTokenizer = MagicMock()
 
-    return TestClient(server_mod.app)
+    numpy_mock = MagicMock()
+    numpy_mock.array = lambda x: x
+
+    with patch.dict(
+        "sys.modules",
+        {"torch": torch_mock, "transformers": transformers_mock, "numpy": numpy_mock},
+    ):
+        import synapse.mcp_server as mcp_mod
+        import synapse.server as server_mod
+
+        mcp_mod.initialize(mock_redis, mock_cache)
+        server_mod.synapse_redis = mock_redis
+        server_mod.embedding_cache = mock_cache
+
+        return TestClient(server_mod.app)
 
 
 # ---------------------------------------------------------------------------
@@ -105,44 +120,62 @@ class TestMCPDiscoveryModuleRemoved:
     """Dead module references must not exist in source after cleanup."""
 
     def test_mcp_discovery_class_not_in_server(self):
-        """RED→GREEN: server.py must not import MCPDiscovery."""
-        server_src = pathlib.Path(
-            "/home/gabrielsb/Synapse/synapse/server.py"
-        ).read_text()
-        tree = ast.parse(server_src)
-
-        discovery_imports = [
-            ast.unparse(node)
-            for node in ast.walk(tree)
-            if isinstance(node, (ast.Import, ast.ImportFrom))
-            and (
-                "MCPDiscovery" in ast.unparse(node)
-                or "mcp_discovery" in ast.unparse(node)
+        """MCPDiscovery class should not exist in server.py"""
+        # Test that import fails - catch ImportError specifically
+        try:
+            from synapse.server import MCPDiscovery  # This should fail
+            assert False, "MCPDiscovery should not be importable from synapse.server"
+        except ImportError as exc:
+            # Check that error is about MCPDiscovery, not torch
+            error_msg = str(exc)
+            # The error might mention torch due to import chain, but should be about MCPDiscovery
+            assert "MCPDiscovery" in error_msg or "cannot import name" in error_msg, (
+                f"Expected MCPDiscovery import error, got: {error_msg}"
             )
-        ]
 
-        assert not discovery_imports, (
-            f"server.py still imports MCPDiscovery: {discovery_imports}"
+        # Check current server.py imports (should not contain MCPDiscovery)
+        server_path = pathlib.Path(__file__).parent.parent / "synapse" / "server.py"
+        with server_path.open('r', encoding='utf-8') as f:
+            server_content = f.read()
+
+        assert "MCPDiscovery" not in server_content, (
+            f"server.py still imports MCPDiscovery: {server_content}"
         )
 
     def test_mcp_base_not_in_mcp_init(self):
         """RED→GREEN: mcp/__init__.py must not import MCPBase or base module."""
-        init_src = pathlib.Path(
-            "/home/gabrielsb/Synapse/synapse/mcp/__init__.py"
-        ).read_text()
-        assert "MCPBase" not in init_src, "mcp/__init__.py still imports MCPBase"
-        assert "from .base" not in init_src, (
-            "mcp/__init__.py still references base module"
+        # Check current mcp/__init__.py imports
+        mcp_init_path = (
+            pathlib.Path(__file__).parent.parent / "synapse" / "mcp" / "__init__.py"
+        )
+
+        with mcp_init_path.open("r", encoding="utf-8") as f:
+            mcp_init_content = f.read()
+
+        # Should not contain MCPBase or base module imports
+        assert "MCPBase" not in mcp_init_content, (
+            f"mcp/__init__.py still imports MCPBase: {mcp_init_content}"
+        )
+        assert "base" not in mcp_init_content.lower(), (
+            f"mcp/__init__.py still imports base module: {mcp_init_content}"
+        )
+        assert "MCPBase" not in mcp_init_content, (
+            f"mcp/__init__.py still imports MCPBase: {mcp_init_content}"
+        )
+        assert "base" not in mcp_init_content.lower(), (
+            f"mcp/__init__.py still imports base module: {mcp_init_content}"
         )
 
     def test_mcp_discovery_file_deleted(self):
         """RED→GREEN: synapse/mcp_discovery.py must not exist."""
-        assert not pathlib.Path(
-            "/home/gabrielsb/Synapse/synapse/mcp_discovery.py"
-        ).exists(), "mcp_discovery.py still exists — not deleted"
+        base_path = pathlib.Path(__file__).parent.parent
+        assert not (base_path / "synapse" / "mcp_discovery.py").exists(), (
+            "mcp_discovery.py still exists — not deleted"
+        )
 
     def test_mcp_base_file_deleted(self):
         """RED→GREEN: synapse/mcp/base.py must not exist."""
-        assert not pathlib.Path(
-            "/home/gabrielsb/Synapse/synapse/mcp/base.py"
-        ).exists(), "mcp/base.py still exists — not deleted"
+        base_path = pathlib.Path(__file__).parent.parent
+        assert not (base_path / "synapse" / "mcp" / "base.py").exists(), (
+            "mcp/base.py still exists — not deleted"
+        )
