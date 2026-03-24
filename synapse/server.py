@@ -132,12 +132,20 @@ async def mcp_endpoint(request: Request) -> Response:
                 print(f"DEBUG: result type = {type(result)}")
                 print(f"DEBUG: result attrs = {[attr for attr in dir(result) if not attr.startswith('_')]}")
                 
-                # FastMCP returns CallToolResult with .content and .data properties
-                if hasattr(result, 'data') and result.data is not None:
+                # Handle different result types from FastMCP
+                if isinstance(result, list):
+                    # Raw list returned - convert to MCP format
+                    response["result"] = {"content": [{"type": "text", "text": str(item)} for item in result]}
+                elif hasattr(result, 'data') and result.data is not None:
+                    # CallToolResult with data
                     response["result"] = {"content": [{"type": "text", "text": str(result.data)}]}
                 else:
-                    # Fallback to content array
-                    response["result"] = {"content": result.content or []}
+                    # Fallback to content array or convert raw result
+                    if hasattr(result, 'content'):
+                        response["result"] = {"content": result.content or []}
+                    else:
+                        # Convert raw result to content
+                        response["result"] = {"content": [{"type": "text", "text": str(result)}]}
             except Exception as e:
                 response["error"] = {"code": -32603, "message": str(e)}
         else:
