@@ -127,8 +127,12 @@ async def mcp_endpoint(request: Request) -> Response:
             
             # Call the tool using FastMCP's call_tool method
             try:
-                result = await mcp.call_tool(tool_name, arguments)
-                response["result"] = {"content": result.content or []}
+                # Ensure MCP server is initialized
+                if not synapse_redis or not embedding_cache:
+                    response["error"] = {"code": -32603, "message": "MCP server not initialized"}
+                else:
+                    result = await mcp.call_tool(tool_name, arguments)
+                    response["result"] = {"content": result.content or []}
             except Exception as e:
                 response["error"] = {"code": -32603, "message": str(e)}
         else:
