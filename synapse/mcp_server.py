@@ -82,6 +82,15 @@ def recall(
     if not synapse_redis:
         raise RuntimeError("MCP server not initialized")
 
+    # Handle parameter coercion for FastMCP
+    if isinstance(domain, str):
+        domain = [domain]
+        print(f"DEBUG: Coerced string domain to list: {domain}")
+    
+    if isinstance(type, str):
+        type = [type]
+        print(f"DEBUG: Coerced string type to list: {type}")
+
     handler = MCPRecall(synapse_redis, embedding_cache)
     return handler.handle_recall(
         {

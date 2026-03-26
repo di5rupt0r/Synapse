@@ -117,13 +117,15 @@ class SynapseRedis:
         # Build RediSearch query
         q_parts = []
 
-        # Domain filter
+        # Domain filter - underscores don't need escaping in modern Redis
         if domain_filter:
+            print(f"DEBUG: domain_filter={domain_filter}")
             domains = "|".join(domain_filter)
             q_parts.append(f"@domain:{{{domains}}}")
 
-        # Type filter
+        # Type filter - underscores don't need escaping in modern Redis
         if type_filter:
+            print(f"DEBUG: type_filter={type_filter}")
             types = "|".join(type_filter)
             q_parts.append(f"@type:{{{types}}}")
 
@@ -132,6 +134,7 @@ class SynapseRedis:
             q_parts.append(f"(@content:{query})")
 
         filter_str = " ".join(q_parts) if q_parts else "*"
+        print(f"DEBUG: final_query={filter_str}")
 
         # Pure BM25 search (vector search disabled for now)
         query_obj = (
@@ -142,7 +145,9 @@ class SynapseRedis:
         try:
             results = self._client.ft(self.INDEX_NAME).search(query_obj)
             return [self._doc_to_dict(doc) for doc in results.docs]
-        except Exception:
+        except Exception as e:
+            # Log error for debugging
+            print(f"Search error: {e}, query: {filter_str}")
             return []
 
     # ---- Graph Traversal ----
